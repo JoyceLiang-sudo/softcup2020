@@ -39,10 +39,15 @@ def convert_back(x, y, w, h):
     xmax = int(round(x + (w / 2)))
     ymin = int(round(y - (h / 2)))
     ymax = int(round(y + (h / 2)))
+
+    xmin = (xmin if (xmin > 0) else 0)
+    xmax = (xmax if (xmax > 0) else 0)
+    ymin = (ymin if (ymin > 0) else 0)
+    ymax = (ymax if (ymax > 0) else 0)
     return (xmin, ymin), (xmax, ymax)
 
 
-def convert_output(detections):
+def convert_output(detections, shape):
     """
     类别编号  置信度 (x,y,w,h)
     转化为
@@ -50,7 +55,12 @@ def convert_output(detections):
     """
     boxes = []
     for detection in detections:
-        p1, p2 = convert_back(detection[2][0], detection[2][1], detection[2][2], detection[2][3])
+        x = detection[2][0] / 512 * shape[1]
+        y = detection[2][1] / 512 * shape[0]
+        w = detection[2][2] / 512 * shape[1]
+        h = detection[2][3] / 512 * shape[0]
+
+        p1, p2 = convert_back(x, y, w, h)
         center = (int((p1[0] + p2[0]) / 2), int((p1[1] + p2[1]) / 2))
         boxes.append([detection[0], float(format(detection[1], '.2f')), center, p1, p2, -1, None])
     return boxes

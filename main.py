@@ -2,8 +2,9 @@ import os
 import cv2
 import time
 import darknet
-from util.point_util import *
-from util.conf import conf
+from model.car import get_license_plate
+from model.point_util import *
+from model.conf import conf
 
 
 def draw_result(image, boxes, class_names, colors):
@@ -17,8 +18,13 @@ def draw_result(image, boxes, class_names, colors):
         cv2.rectangle(image, box[3], box[4], colors[box[0]], 1)
         cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
 
+        # 画追踪编号
         if box[5] != -1:
             cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+        # 画车牌
+        if (box[0] == 1 or box[0] == 2) and box[6] is not None:
+            # TODO：这里 cv2.putText打印中文会乱码，建议使用PIL代替
+            cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
     return image
 
 
@@ -85,13 +91,16 @@ def YOLO():
         detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=conf.thresh)
 
         # 类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
-        boxes = convert_output(detections)
+        # 把识别框映射为输入图片大小
+        boxes = convert_output(detections, frame_read.shape)
 
+        # 车牌识别
+        boxes = get_license_plate(boxes, frame_rgb)
         # 画出预测结果
-        image = draw_result(frame_resized, boxes, class_names, colors)
+        image = draw_result(frame_rgb, boxes, class_names, colors)
 
         # 打印预测信息
-        print_info(boxes, time.time() - prev_time, class_names)
+        # print_info(boxes, time.time() - prev_time, class_names)
 
         # 显示图片
         out_win = "result"
