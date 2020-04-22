@@ -3,23 +3,23 @@ import numpy as np
 import os
 image_path=''
 
-#红跟绿有些时候容易混乱，绿灯时有时会识别为red
+#红跟绿有些时候容易混乱，绿灯时有时会识别为red，基本的差不多
 def detect_color(image):
     #image = cv2.imread(image_path)
     #BGR 转成 HSV
     hsv_img = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
 
     #min and max HSV values
-    red_min = np.array([0,5,150])
-    red_max = np.array([8,255,255])
-    red_min2 = np.array([175,5,150])
+    red_min = np.array([0,43,46])
+    red_max = np.array([10,255,255])
+    red_min2 = np.array([156,43,46])
     red_max2 = np.array([180,255,255])
 
-    yello_min = np.array([26,5,150])
-    yello_max = np.array([30,255,255])
+    yello_min = np.array([26,43,46])
+    yello_max = np.array([34,255,255])
 
-    green_min = np.array([35,5,150])
-    green_max = np.array([90,255,255])
+    green_min = np.array([35,43,46])
+    green_max = np.array([77,255,255])
 
     #apply red,yello,green thresh to image
     #利用cv2.inRange函数设阈值，去除背景部分
