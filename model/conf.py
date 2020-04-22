@@ -1,5 +1,6 @@
 # coding=utf-8
 from easydict import EasyDict as edict
+from PIL import ImageFont
 
 # yolo 的配置文件
 conf = edict()
@@ -22,3 +23,5 @@ conf.names_path = './data/BDD.names'
 
 # 置信度，大于此值会被判断为真
 conf.thresh = 0.3
+
+conf.fontStyle = ImageFont.truetype("font/simsun.ttc", size=20, encoding="utf-8")

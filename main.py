@@ -6,28 +6,6 @@ from model.car import get_license_plate
 from model.point_util import *
 from model.conf import conf
 
-
-def draw_result(image, boxes, class_names, colors):
-    """
-    画出预测结果
-    """
-    for box in boxes:
-        predicted_class = class_names[box[0]]
-        label = '{} {:.2f}'.format(predicted_class, box[1])
-
-        cv2.rectangle(image, box[3], box[4], colors[box[0]], 1)
-        cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
-
-        # 画追踪编号
-        if box[5] != -1:
-            cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
-        # 画车牌
-        if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-            # TODO：这里 cv2.putText打印中文会乱码，建议使用PIL代替
-            cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
-    return image
-
-
 netMain = None
 metaMain = None
 altNames = None
@@ -97,17 +75,17 @@ def YOLO():
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb)
         # 画出预测结果
-        image = draw_result(frame_rgb, boxes, class_names, colors)
+        frame_rgb = draw_result(frame_rgb, boxes, class_names, colors)
 
         # 打印预测信息
-        # print_info(boxes, time.time() - prev_time, class_names)
+        print_info(boxes, time.time() - prev_time, class_names)
 
         # 显示图片
         out_win = "result"
         cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
         # cv2.setWindowProperty(out_win, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        cv2.imshow(out_win, image)
+        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
+        cv2.imshow(out_win, frame_rgb)
         cv2.waitKey(1)
     cap.release()
 

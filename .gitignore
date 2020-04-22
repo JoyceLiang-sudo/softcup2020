@@ -1,3 +1,5 @@
 *.dll
 *.weights
 .idea
+*.avi
+__pycache__

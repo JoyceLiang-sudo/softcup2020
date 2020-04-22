@@ -2,6 +2,10 @@
 """
 一些坐标点操作的工具
 """
+from model.conf import conf
+from PIL import Image, ImageDraw
+import numpy
+import cv2
 
 
 def get_names(classes_path):
@@ -79,3 +83,40 @@ def print_info(boxes, time, class_names):
         # print(class_names[box[0]], (box[3][0], box[3][1]), (box[4][0], box[4][1]))
     print('成功追踪 {} 个物体'.format(count))
     print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
+
+
+def draw_result(image, boxes, class_names, colors, mode=False):
+    """
+    画出预测结果
+    """
+    if mode:
+        image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(image)
+        for box in boxes:
+            predicted_class = class_names[box[0]]
+            label = '{} {:.2f}'.format(predicted_class, box[1])
+
+            draw.rectangle([tuple(box[3]), tuple(box[4])], outline=colors[box[0]])
+            draw.text((box[3][0], box[3][1] - 5), label, colors[box[0]], font=conf.fontStyle)
+            # 画追踪编号
+            if box[5] != -1:
+                draw.text(box[2], str(box[5]), colors[box[0]], font=conf.fontStyle)
+            # 画车牌
+            if (box[0] == 1 or box[0] == 2) and box[6] is not None:
+                draw.text(box[2], box[6], colors[box[0]], font=conf.fontStyle)
+        image = cv2.cvtColor(numpy.asarray(image), cv2.COLOR_RGB2BGR)
+    else:
+        for box in boxes:
+            predicted_class = class_names[box[0]]
+            label = '{} {:.2f}'.format(predicted_class, box[1])
+
+            cv2.rectangle(image, box[3], box[4], colors[box[0]], 1)
+            cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+
+            # 画追踪编号
+            if box[5] != -1:
+                cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+            # # 画车牌
+            # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
+            #     cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+    return image
