@@ -5,6 +5,7 @@ import darknet
 from model.car import get_license_plate
 from model.point_util import *
 from model.conf import conf
+from model.detect_color import traffic_light
 
 netMain = None
 metaMain = None
@@ -71,22 +72,13 @@ def YOLO():
         # 类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
         # 把识别框映射为输入图片大小
         boxes = convert_output(detections, frame_read.shape)
-        #灯的颜色放在box最后面
-        for c,box in enumerate(boxes):
-            if box[0] == 6:
-                roi = frame_rgb[box[3][1]:box[4][1], box[3][0]:box[4][0]]
-                light_num = detect_color.detect_color(roi)
-                if light_num == 1:
-                    box[6] = 'red'
-                elif light_num == 2:
-                    box[6] = 'yello'
-                elif light_num == 3:
-                    box[6] = 'green'
-                else:
-                    box[6] = None
+
+        # 红绿灯的颜色放在box最后面
+        boxes = traffic_light(boxes, frame_rgb)
 
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb)
+
         # 画出预测结果
         frame_rgb = draw_result(frame_rgb, boxes, class_names, colors)
 

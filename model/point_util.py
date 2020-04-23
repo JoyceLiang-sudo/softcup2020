@@ -119,4 +119,7 @@ def draw_result(image, boxes, class_names, colors, mode=False):
             # # 画车牌
             # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
             #     cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+            # 红绿灯
+            if box[0] == 6 and box[6] is not None:
+                cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
     return image

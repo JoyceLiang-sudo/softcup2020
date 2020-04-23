@@ -6,7 +6,7 @@ from PIL import ImageFont
 conf = edict()
 
 # 视频路径，为0则打开内置摄像头
-conf.video_path = "./video.avi"
+conf.video_path = "./data/video3.mp4"
 # conf.video_path = 0
 
 # cfg 文件的路径
@@ -24,4 +24,5 @@ conf.names_path = './data/BDD.names'
 # 置信度，大于此值会被判断为真
 conf.thresh = 0.3
 
+# 字体文件
 conf.fontStyle = ImageFont.truetype("font/simsun.ttc", size=20, encoding="utf-8")
