@@ -2,6 +2,7 @@ import os
 import cv2
 import time
 import darknet
+import model.plate as plate
 from model.car import get_license_plate
 from model.point_util import *
 from model.conf import conf
@@ -13,6 +14,7 @@ altNames = None
 
 
 def YOLO():
+    plate_model = plate.LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
     class_names = get_names(conf.names_path)
     colors = get_colors(class_names)
     global metaMain, netMain, altNames
@@ -77,13 +79,13 @@ def YOLO():
         boxes = traffic_light(boxes, frame_rgb)
 
         # 车牌识别
-        boxes = get_license_plate(boxes, frame_rgb)
+        boxes = get_license_plate(boxes, frame_rgb, plate_model)
 
         # 画出预测结果
         frame_rgb = draw_result(frame_rgb, boxes, class_names, colors)
 
         # 打印预测信息
-        print_info(boxes, time.time() - prev_time, class_names)
+        # print_info(boxes, time.time() - prev_time, class_names)
 
         # 显示图片
         out_win = "result"

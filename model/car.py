@@ -2,10 +2,9 @@
 """
 车辆
 """
-from hyperlpr import *
 
 
-def get_license_plate(boxes, image, thresh=0.6):
+def get_license_plate(boxes, image, model, thresh=0.6):
     """
     获得车牌
     类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
@@ -15,10 +14,8 @@ def get_license_plate(boxes, image, thresh=0.6):
             # 截取ROI作为识别车牌的输入图片
             roi = image[box[3][1]:box[4][1], box[3][0]:box[4][0]]
 
-            sys.stdout = open(os.devnull, 'w')
-            res = HyperLPR_plate_recognition(roi)
-            sys.stdout = sys.__stdout__
-
+            res = model.recognize_plate(roi)
+            # print(res)
             if len(res) > 0 and res[0][1] > thresh:
                 # print((box[4][0] - box[3][0]) * (box[4][1] - box[3][1]))
                 box[6] = str(res[0][0])

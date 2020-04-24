@@ -1,6 +1,7 @@
 # coding=utf-8
 from easydict import EasyDict as edict
 from PIL import ImageFont
+import tensorflow as tf
 
 # yolo 的配置文件
 conf = edict()
@@ -9,16 +10,10 @@ conf = edict()
 conf.video_path = "./data/video3.mp4"
 # conf.video_path = 0
 
-# cfg 文件的路径
+# yolo配置文件
 conf.cfg_path = './data/Gaussian_yolov3_BDD.cfg'
-
-# weight文件的路径
 conf.weight_path = './data/Gaussian_yolov3_BDD.weights'
-
-# data文件的路径
 conf.radar_data_path = './data/BDD.data'
-
-# names文件路径
 conf.names_path = './data/BDD.names'
 
 # 置信度，大于此值会被判断为真
@@ -26,3 +21,12 @@ conf.thresh = 0.3
 
 # 字体文件
 conf.fontStyle = ImageFont.truetype("font/simsun.ttc", size=20, encoding="utf-8")
+
+# 车牌识别的模型
+conf.plate_cascade = './data/plate_models/cascade.xml'
+conf.plate_model12 = './data/plate_models/model12.h5'
+conf.plate_ocr_plate_all_gru = './data/plate_models/ocr_plate_all_gru.h5'
+
+# 设置tf显存占用自增长，防止显存溢出
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
