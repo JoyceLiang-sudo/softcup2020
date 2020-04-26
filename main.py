@@ -61,6 +61,7 @@ def YOLO():
         prev_time = time.time()
         ret, frame_read = cap.read()
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
+        frame_rgb = zebra(frame_rgb)
         frame_resized = cv2.resize(frame_rgb,
                                    (darknet.network_width(netMain),
                                     darknet.network_height(netMain)),
@@ -77,7 +78,7 @@ def YOLO():
 
         # 红绿灯的颜色放在box最后面
         boxes = traffic_light(boxes, frame_rgb)
-
+        
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb, plate_model)
 
