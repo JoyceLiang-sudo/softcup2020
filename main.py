@@ -57,11 +57,18 @@ def YOLO():
 
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(darknet.network_width(netMain), darknet.network_height(netMain), 3)
+    flag = True
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
-        frame_rgb = zebra(frame_rgb)
+        if flag:
+            x_min,y_min,x_max,y_max = zebra(frame_rgb)
+            h = y_max - y_min
+            a = 1 / 3 * h
+            flag = False
+        green = (0, 255, 0)
+        cv2.line(frame_rgb, (0, int(y_min + a)), (x_max, int(y_min + a)), green)
         frame_resized = cv2.resize(frame_rgb,
                                    (darknet.network_width(netMain),
                                     darknet.network_height(netMain)),
