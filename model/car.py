@@ -24,7 +24,7 @@ def get_license_plate(boxes, image, model, thresh=0.6):
     return boxes
 
 
-def too_small(p1, p2, size=75000):
+def too_small(p1, p2, size=60000):
     """
     判断矩形面积是否超过下限
     """

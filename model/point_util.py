@@ -79,6 +79,9 @@ def print_info(boxes, time, class_names):
     for box in boxes:
         if box[5] != -1:
             count += 1
+        # 打印车牌
+        # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
+        #     print(box[6])
         # 打印坐标物体坐标信息
         # print(class_names[box[0]], (box[3][0], box[3][1]), (box[4][0], box[4][1]))
     print('成功追踪 {} 个物体'.format(count))

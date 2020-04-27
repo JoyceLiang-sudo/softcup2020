@@ -138,7 +138,7 @@ class LPR:
         H -= 3
         if H < 0:
             H = 0
-        T += 2;
+        T += 2
         if T >= image.shape[1] - 1:
             T = image.shape[1] - 1
         rect[2] -= rect[2] * (1 - res_raw[1] + res_raw[0])

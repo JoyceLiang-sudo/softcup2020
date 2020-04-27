@@ -7,6 +7,7 @@ from model.car import get_license_plate
 from model.point_util import *
 from model.conf import conf
 from model.detect_color import traffic_light
+from model.zebra import zebra
 
 netMain = None
 metaMain = None
@@ -58,15 +59,19 @@ def YOLO():
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(darknet.network_width(netMain), darknet.network_height(netMain), 3)
     flag = True
+    back_ground = []
+
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
         if flag:
-            x_min,y_min,x_max,y_max = zebra(frame_rgb)
+            x_min, y_min, x_max, y_max = zebra(frame_rgb)
             h = y_max - y_min
             a = 1 / 3 * h
+            back_ground.append(x_min, y_min, x_max, y_max)
             flag = False
+        # TODO:画线应该在统一的画结果函数里
         green = (0, 255, 0)
         cv2.line(frame_rgb, (0, int(y_min + a)), (x_max, int(y_min + a)), green)
         frame_resized = cv2.resize(frame_rgb,
@@ -85,7 +90,7 @@ def YOLO():
 
         # 红绿灯的颜色放在box最后面
         boxes = traffic_light(boxes, frame_rgb)
-        
+
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb, plate_model)
 
@@ -93,7 +98,7 @@ def YOLO():
         frame_rgb = draw_result(frame_rgb, boxes, class_names, colors)
 
         # 打印预测信息
-        # print_info(boxes, time.time() - prev_time, class_names)
+        print_info(boxes, time.time() - prev_time, class_names)
 
         # 显示图片
         out_win = "result"
@@ -101,7 +106,8 @@ def YOLO():
         # cv2.setWindowProperty(out_win, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
         cv2.imshow(out_win, frame_rgb)
-        cv2.waitKey(1)
+        if cv2.waitKey(1) >= 0:
+            cv2.waitKey(0)
     cap.release()
 
 
