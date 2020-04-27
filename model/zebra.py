@@ -106,8 +106,8 @@ def zebra(img):
             cv2.rectangle(img, (j, i), (j+Nj, i+Ni), (0, 0, 255), 3)
     if ret:
         cv2.rectangle(img, location[0], location[1], (255, 0, 255), 3)
-        (xmin,ymin) = location[0]
-        (xmax,ymax) = location[1]
+    (xmin,ymin) = location[0]
+    (xmax,ymax) = location[1]
     h = ymax - ymin
     a = 1/3 * h
     green =(0, 255, 0)
