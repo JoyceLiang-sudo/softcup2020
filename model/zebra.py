@@ -108,8 +108,5 @@ def zebra(img):
         cv2.rectangle(img, location[0], location[1], (255, 0, 255), 3)
     (xmin,ymin) = location[0]
     (xmax,ymax) = location[1]
-    h = ymax - ymin
-    a = 1/3 * h
-    green =(0, 255, 0)
-    cv2.line(img,(0, int(ymin + a)), (xmax, int(ymin + a)), green)
-    return img
+   
+    return xmin,ymin,xmax,ymax
