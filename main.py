@@ -129,7 +129,7 @@ def YOLO():
         boxes = convert_output(detections)
 
         # 更新tracker
-        boxes = tracker_update(boxes, frame_rgb, encoder, tracker)
+        boxes = tracker_update(boxes, frame_resized, encoder, tracker)
 
         # 红绿灯的颜色放在box最后面
         boxes = traffic_light(boxes, frame_rgb)
