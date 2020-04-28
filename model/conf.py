@@ -30,3 +30,11 @@ conf.plate_ocr_plate_all_gru = './data/plate_models/ocr_plate_all_gru.h5'
 # 设置tf显存占用自增长，防止显存溢出
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+# deep sort 的配置文件
+conf.trackerConf = edict()
+
+conf.trackerConf.max_cosine_distance = 0.3
+conf.trackerConf.nn_budget = None
+conf.trackerConf.nms_max_overlap = 0.7
+conf.trackerConf.model_filename = './data/mars-small128.pb'

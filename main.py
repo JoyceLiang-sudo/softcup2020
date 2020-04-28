@@ -1,20 +1,72 @@
 import os
-import cv2
 import time
 import darknet
+import numpy as np
 import model.plate as plate
 from model.car import get_license_plate
-from model.point_util import *
+from model.util.point_util import *
+from model.util import generate_detections as gdet
 from model.conf import conf
 from model.detect_color import traffic_light
-from model.zebra import zebra
+from model.deep_sort import preprocessing, nn_matching
+from model.deep_sort.detection import Detection
+from model.deep_sort.tracker import Tracker
 
 netMain = None
 metaMain = None
 altNames = None
 
 
+def init_deep_sort():
+    """
+    初始化deep sort
+    """
+    encoder = gdet.create_box_encoder(conf.trackerConf.model_filename, batch_size=1)
+    metric = nn_matching.NearestNeighborDistanceMetric("cosine", conf.trackerConf.max_cosine_distance,
+                                                       conf.trackerConf.nn_budget)
+    tracker = Tracker(metric)
+    return encoder, tracker
+
+
+def tracker_update(input_boxes, frame, encoder, tracker):
+    """
+    更新tracker
+    """
+    tracker_boxes = []
+    for box in input_boxes:
+        if box[0] == 2:
+            # continue
+            # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
+            tracker_boxes.append([box[3][0], box[3][1], box[4][0] - box[3][0], box[4][1] - box[3][1], box[0], box[1]])
+
+    if len(tracker_boxes) > 0:
+        features = encoder(frame, np.array(tracker_boxes)[:, 0:4].tolist())
+
+        # score to 1.0 here).
+        detections = [Detection(bbox, 1.0, feature) for bbox, feature in zip(tracker_boxes, features)]
+
+        # Run non-maxima suppression.
+        boxes = np.array([d.tlwh for d in detections])
+        scores = np.array([d.confidence for d in detections])
+        indices = preprocessing.non_max_suppression(boxes, conf.trackerConf.nms_max_overlap, scores)
+        detections = [detections[i] for i in indices]
+
+        # Call the tracker
+        tracker.predict()
+        tracker.update(detections)
+
+    for track in tracker.tracks:
+        if not track.is_confirmed() or track.time_since_update > 1:
+            continue
+        bbox = track.to_tlbr()
+
+        input_boxes = match_box(input_boxes, bbox, int(track.track_id))
+
+    return input_boxes
+
+
 def YOLO():
+    encoder, tracker = init_deep_sort()
     plate_model = plate.LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
     class_names = get_names(conf.names_path)
     colors = get_colors(class_names)
@@ -56,28 +108,17 @@ def YOLO():
     cap = cv2.VideoCapture(conf.video_path)
     print("Starting the YOLO loop...")
 
+    image_width = darknet.network_width(netMain)
+    image_height = darknet.network_height(netMain)
+
     # Create an image we reuse for each detect
-    darknet_image = darknet.make_image(darknet.network_width(netMain), darknet.network_height(netMain), 3)
-    flag = True
-    back_ground = []
+    darknet_image = darknet.make_image(image_width, image_height, 3)
 
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
-        if flag:
-            x_min, y_min, x_max, y_max = zebra(frame_rgb)
-            h = y_max - y_min
-            a = 1 / 3 * h
-            back_ground.append(x_min, y_min, x_max, y_max)
-            flag = False
-        # TODO:画线应该在统一的画结果函数里
-        green = (0, 255, 0)
-        cv2.line(frame_rgb, (0, int(y_min + a)), (x_max, int(y_min + a)), green)
-        frame_resized = cv2.resize(frame_rgb,
-                                   (darknet.network_width(netMain),
-                                    darknet.network_height(netMain)),
-                                   interpolation=cv2.INTER_LINEAR)
+        frame_resized = cv2.resize(frame_rgb, (image_width, image_height), interpolation=cv2.INTER_LINEAR)
 
         darknet.copy_image_from_bytes(darknet_image, frame_resized.tobytes())
 
@@ -85,11 +126,16 @@ def YOLO():
         detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=conf.thresh)
 
         # 类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
-        # 把识别框映射为输入图片大小
-        boxes = convert_output(detections, frame_read.shape)
+        boxes = convert_output(detections)
+
+        # 更新tracker
+        boxes = tracker_update(boxes, frame_rgb, encoder, tracker)
 
         # 红绿灯的颜色放在box最后面
         boxes = traffic_light(boxes, frame_rgb)
+
+        # 把识别框映射为输入图片大小
+        boxes = cast_origin(boxes, image_width, image_height, frame_rgb.shape)
 
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb, plate_model)
