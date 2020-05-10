@@ -16,6 +16,10 @@ netMain = None
 metaMain = None
 altNames = None
 
+xmin = 0
+ymin = 0
+xmax = 0
+ymax = 0
 
 def init_deep_sort():
     """
@@ -66,6 +70,7 @@ def tracker_update(input_boxes, frame, encoder, tracker):
 
 
 def YOLO():
+    global xmin, ymin, xmax, ymax
     encoder, tracker = init_deep_sort()
     plate_model = plate.LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
     class_names = get_names(conf.names_path)
@@ -115,8 +120,13 @@ def YOLO():
     darknet_image = darknet.make_image(image_width, image_height, 3)
 
     while True:
+        flag = True
         prev_time = time.time()
         ret, frame_read = cap.read()
+        if flag :
+            xmin, ymin, xmax, ymax = zebra(frame_read)
+            flag = False
+        draw_line(frame_read, xmin, ymin, xmax, ymax)
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb, (image_width, image_height), interpolation=cv2.INTER_LINEAR)
 
