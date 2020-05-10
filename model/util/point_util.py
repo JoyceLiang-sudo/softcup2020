@@ -98,6 +98,24 @@ def convert_output(detections):
         boxes.append([detection[0], float(format(detection[1], '.2f')), center, p1, p2, -1, None])
     return boxes
 
+def make_track(boxes,tracks):
+    """
+    提取中心点做轨迹
+    """
+    for box in boxes:
+        if box[5] == -1:
+            continue
+        flag = 0
+        for _track in tracks:
+            if _track[0] == box[5]:
+                _track.append(box[2])
+                flag = 1
+                break
+        if flag == 0:
+            track = []
+            track.append(box[5])
+            track.append(box[2])
+            tracks.append(track)
 
 def cast_origin(boxes, origin_width, origin_height, shape):
     """
@@ -129,7 +147,7 @@ def print_info(boxes, time, class_names):
     print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
 
 
-def draw_result(image, boxes, class_names, colors, mode=False):
+def draw_result(image, boxes, class_names, colors, tracks,mode=False):
     """
     画出预测结果
     """
@@ -160,6 +178,17 @@ def draw_result(image, boxes, class_names, colors, mode=False):
             # 画追踪编号
             if box[5] != -1:
                 cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+                judgeBreak = 0
+                for track in tracks:
+                    if box[5] != track[0]:
+                        continue
+                    i = 1
+                    while i < len(track) - 1:
+                        cv2.circle(image, track[i], 1, colors[box[0]], -1)
+                        i = i + 1
+                        judgeBreak = 1
+                    if judgeBreak == 1:
+                        break
             # # 画车牌
             # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
             #     cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)

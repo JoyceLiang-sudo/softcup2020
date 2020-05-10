@@ -55,12 +55,12 @@ def tracker_update(input_boxes, frame, encoder, tracker):
         tracker.predict()
         tracker.update(detections)
 
-    for track in tracker.tracks:
-        if not track.is_confirmed() or track.time_since_update > 1:
-            continue
-        bbox = track.to_tlbr()
+        for track in tracker.tracks:
+            if not track.is_confirmed() or track.time_since_update > 1:
+                continue
+            bbox = track.to_tlbr()
 
-        input_boxes = match_box(input_boxes, bbox, int(track.track_id))
+            input_boxes = match_box(input_boxes, bbox, int(track.track_id))
 
     return input_boxes
 
@@ -110,7 +110,7 @@ def YOLO():
 
     image_width = darknet.network_width(netMain)
     image_height = darknet.network_height(netMain)
-
+    tracks = []
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(image_width, image_height, 3)
 
@@ -137,11 +137,14 @@ def YOLO():
         # 把识别框映射为输入图片大小
         boxes = cast_origin(boxes, image_width, image_height, frame_rgb.shape)
 
+        #制作轨迹
+        make_track(boxes,tracks)
+
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb, plate_model)
 
         # 画出预测结果
-        frame_rgb = draw_result(frame_rgb, boxes, class_names, colors)
+        frame_rgb = draw_result(frame_rgb, boxes, class_names, colors, tracks)
 
         # 打印预测信息
         print_info(boxes, time.time() - prev_time, class_names)
