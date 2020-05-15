@@ -5,10 +5,12 @@ from PIL import Image
 DEBUG = False
 
 def draw_line(img, xmin, ymin, xmax, ymax):
+    global weight, height
     h = ymax - ymin
     a = 1 / 2 * h
     green = (0, 255, 0)
-    cv2.line(img, (0, int(ymin + a)), (xmax, int(ymin + a)), green)
+    cv2.rectangle(img, (0, int(ymin)), (2*int(xmax), int(ymax)), (0, 255, 0), 3)
+    cv2.line(img, (0, int(ymin + a)), (2*int(xmax), int(ymin + a)), green)
 
 def delete_contours(contours, delete_list):
     delta = 0
@@ -119,6 +121,9 @@ def get_location(indices, labels, Ni, Nj):
 
 
 def zebra(img):
+    global height, weight
+    height = img.shape[0]
+    weight = img.shape[1]
     Ni, Nj = (80, 902)
     low_hsv = np.array([0, 0, 0])
     high_hsv = np.array([125,135,120])
