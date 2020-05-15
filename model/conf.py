@@ -7,7 +7,7 @@ import tensorflow as tf
 conf = edict()
 
 # 视频路径，为0则打开内置摄像头
-conf.video_path = "./data/video-02.mp4"
+conf.video_path = "./data/video.avi"
 # conf.video_path = 0
 
 # yolo配置文件

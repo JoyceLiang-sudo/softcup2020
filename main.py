@@ -39,10 +39,12 @@ def tracker_update(input_boxes, frame, encoder, tracker):
     更新tracker
     """
     tracker_boxes = []
+    count = 0
     for box in input_boxes:
         if box[0] == 2:
             # continue
             # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
+            count += 1
             tracker_boxes.append([box[3][0], box[3][1], box[4][0] - box[3][0], box[4][1] - box[3][1], box[0], box[1]])
 
     if len(tracker_boxes) > 0:
@@ -61,11 +63,14 @@ def tracker_update(input_boxes, frame, encoder, tracker):
         tracker.predict()
         tracker.update(detections)
 
+        i = 0
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
+            if i >= count:
+                continue
             bbox = track.to_tlbr()
-
+            i += 1
             input_boxes = match_box(input_boxes, bbox, int(track.track_id))
 
     return input_boxes
@@ -127,7 +132,7 @@ def YOLO():
         if flag :
             xmin, ymin, xmax, ymax = zebra.zebra(frame_read)
         flag = False
-        zebra.draw_line(frame_read, xmin, ymin, xmax, ymax)
+
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb, (image_width, image_height), interpolation=cv2.INTER_LINEAR)
 
@@ -156,6 +161,7 @@ def YOLO():
 
         # 画出预测结果
         frame_rgb = draw_result(frame_rgb, boxes, class_names, colors, tracks)
+        zebra.draw_line(frame_rgb, xmin, ymin, xmax, ymax)
 
         # 打印预测信息
         print_info(boxes, time.time() - prev_time, class_names)

@@ -4,13 +4,14 @@ from PIL import Image
 
 DEBUG = False
 
+
 def draw_line(img, xmin, ymin, xmax, ymax):
-    global weight, height
     h = ymax - ymin
     a = 1 / 2 * h
     green = (0, 255, 0)
-    cv2.rectangle(img, (0, int(ymin)), (2*int(xmax), int(ymax)), (0, 255, 0), 3)
-    cv2.line(img, (0, int(ymin + a)), (2*int(xmax), int(ymin + a)), green)
+    # cv2.rectangle(img, (0, int(ymin)), (2 * int(xmax), int(ymax)), (0, 255, 0), 3)
+    cv2.line(img, (0, int(ymin + a)), (2 * int(xmax), int(ymin + a)), green)
+
 
 def delete_contours(contours, delete_list):
     delta = 0
@@ -22,7 +23,7 @@ def delete_contours(contours, delete_list):
 
 
 def processing(img):
-    #GRAY = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    # GRAY = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     GRAY = cv2.medianBlur(img, 5)
     RET, binary = cv2.threshold(GRAY, 115, 255, cv2.THRESH_BINARY)
     if DEBUG:
@@ -50,7 +51,7 @@ def processing(img):
     for i in range(len(contours)):
         area = cv2.contourArea(contours[i])
         if area < threshold_low:
-            cv2.drawContours(canny,[contours[i]],0,0,-1)
+            cv2.drawContours(canny, [contours[i]], 0, 0, -1)
     if DEBUG:
         cv2.imshow("img", canny)
         cv2.waitKey(1000)
@@ -59,8 +60,8 @@ def processing(img):
     for i in range(len(contours)):
         # 外接矩形框，没有方向角
         x, y, w, h = cv2.boundingRect(contours[i])
-        if w/h >= 1.6:
-            cv2.drawContours(canny,[contours[i]],0,0,-1)
+        if w / h >= 1.6:
+            cv2.drawContours(canny, [contours[i]], 0, 0, -1)
     if DEBUG:
         cv2.imshow("img", canny)
         cv2.waitKey(1000)
@@ -126,10 +127,10 @@ def zebra(img):
     weight = img.shape[1]
     Ni, Nj = (80, 902)
     low_hsv = np.array([0, 0, 0])
-    high_hsv = np.array([125,135,120])
-    mask = cv2.inRange(img,lowerb=low_hsv,upperb=high_hsv)
+    high_hsv = np.array([125, 135, 120])
+    mask = cv2.inRange(img, lowerb=low_hsv, upperb=high_hsv)
     if DEBUG:
-        cv2.imshow("test",mask)
+        cv2.imshow("test", mask)
         cv2.waitKey(1000)
     gray = processing(mask)
     Amplitude, theta = get_GD(gray)
@@ -148,4 +149,3 @@ def zebra(img):
         (xmin, ymin) = location[0]
         (xmax, ymax) = location[1]
         return xmin, ymin, xmax, ymax
-
