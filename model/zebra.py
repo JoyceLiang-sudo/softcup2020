@@ -141,11 +141,11 @@ def zebra(img):
     labels = predict(patches, DEBUG)
     indices = np.array(indices)
     ret, location = get_location(indices, labels, Ni, Nj)
-    if DEBUG:
-        for i, j in indices[labels == 1]:
-            cv2.rectangle(img, (j, i), (j + Nj, i + Ni), (0, 0, 255), 3)
+    # if DEBUG:
+    # for i, j in indices[labels == 1]:
+    #    cv2.rectangle(img, (j, i), (j + Nj, i + Ni), (0, 0, 255), 3)
     if ret:
-        cv2.rectangle(img, location[0], location[1], (255, 0, 255), 3)
+        # cv2.rectangle(img, location[0], location[1], (255, 0, 255), 3)
         (xmin, ymin) = location[0]
         (xmax, ymax) = location[1]
         return xmin, ymin, xmax, ymax

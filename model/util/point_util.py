@@ -98,7 +98,8 @@ def convert_output(detections):
         boxes.append([detection[0], float(format(detection[1], '.2f')), center, p1, p2, -1, None])
     return boxes
 
-def make_track(boxes,tracks):
+
+def make_track(boxes, tracks):
     """
     提取中心点做轨迹
     """
@@ -116,6 +117,7 @@ def make_track(boxes,tracks):
             track.append(box[5])
             track.append(box[2])
             tracks.append(track)
+
 
 def cast_origin(boxes, origin_width, origin_height, shape):
     """
@@ -147,7 +149,7 @@ def print_info(boxes, time, class_names):
     print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
 
 
-def draw_result(image, boxes, class_names, colors, tracks,mode=False):
+def draw_result(image, boxes, class_names, colors, tracks, mode=False):
     """
     画出预测结果
     """

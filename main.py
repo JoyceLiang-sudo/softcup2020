@@ -12,7 +12,9 @@ from model.deep_sort import preprocessing, nn_matching
 from model.deep_sort.detection import Detection
 from model.deep_sort.tracker import Tracker
 from model import zebra
+from model import lane_line
 import cv2
+
 netMain = None
 metaMain = None
 altNames = None
@@ -22,6 +24,7 @@ ymin = 0
 xmax = 0
 ymax = 0
 flag = True
+
 
 def init_deep_sort():
     """
@@ -78,6 +81,8 @@ def tracker_update(input_boxes, frame, encoder, tracker):
 
 def YOLO():
     global xmin, ymin, xmax, ymax, flag
+    _points = []
+    lane_lines = []
     encoder, tracker = init_deep_sort()
     plate_model = plate.LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
     class_names = get_names(conf.names_path)
@@ -129,8 +134,10 @@ def YOLO():
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
-        if flag :
+        ret, frame_test = cap.read()
+        if flag:
             xmin, ymin, xmax, ymax = zebra.zebra(frame_read)
+            lane_lines = lane_line.lane_lines(frame_test, xmin, ymin, xmax, ymax, _points)
         flag = False
 
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
@@ -153,8 +160,8 @@ def YOLO():
         # 把识别框映射为输入图片大小
         boxes = cast_origin(boxes, image_width, image_height, frame_rgb.shape)
 
-        #制作轨迹
-        make_track(boxes,tracks)
+        # 制作轨迹
+        make_track(boxes, tracks)
 
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb, plate_model)
@@ -162,6 +169,8 @@ def YOLO():
         # 画出预测结果
         frame_rgb = draw_result(frame_rgb, boxes, class_names, colors, tracks)
         zebra.draw_line(frame_rgb, xmin, ymin, xmax, ymax)
+        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
+        lane_line.draw_lines(frame_rgb, lane_lines)
 
         # 打印预测信息
         print_info(boxes, time.time() - prev_time, class_names)
@@ -170,7 +179,7 @@ def YOLO():
         out_win = "result"
         cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
         # cv2.setWindowProperty(out_win, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
+        # frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
         cv2.imshow(out_win, frame_rgb)
         if cv2.waitKey(1) >= 0:
             cv2.waitKey(0)

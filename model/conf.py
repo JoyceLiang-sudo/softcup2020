@@ -7,7 +7,7 @@ import tensorflow as tf
 conf = edict()
 
 # 视频路径，为0则打开内置摄像头
-conf.video_path = "./data/video.avi"
+conf.video_path = "./data/video3.mp4"
 # conf.video_path = 0
 
 # yolo配置文件
@@ -28,9 +28,7 @@ conf.plate_model12 = './data/plate_models/model12.h5'
 conf.plate_ocr_plate_all_gru = './data/plate_models/ocr_plate_all_gru.h5'
 
 # 设置tf显存占用自增长，防止显存溢出
-
-physical_devices = tf.config.experimental.list_physical_devices('GPU')
-assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 # deep sort 的配置文件
