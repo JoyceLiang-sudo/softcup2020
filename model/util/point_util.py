@@ -6,6 +6,7 @@ from model.conf import conf
 from PIL import Image, ImageDraw
 import numpy
 import cv2
+from model import lane_line
 
 
 def calculate_variance(p1, p2, p3, p4):
@@ -149,13 +150,14 @@ def print_info(boxes, time, class_names):
     print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
 
 
-def draw_result(image, boxes, class_names, colors, tracks, mode=False):
+def draw_result(image, boxes, class_names, colors, tracks, illegal_boxes_number, mode=False):
     """
     画出预测结果
     """
     if mode:
         image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         draw = ImageDraw.Draw(image)
+
         for box in boxes:
             predicted_class = class_names[box[0]]
             label = '{} {:.2f}'.format(predicted_class, box[1])
@@ -170,16 +172,25 @@ def draw_result(image, boxes, class_names, colors, tracks, mode=False):
                 draw.text(box[2], box[6], colors[box[0]], font=conf.fontStyle)
         image = cv2.cvtColor(numpy.asarray(image), cv2.COLOR_RGB2BGR)
     else:
+        illegal_flag = False
         for box in boxes:
+            box_color = colors[box[0]]
+            box_thick = 1
+            for number in illegal_boxes_number:
+                if number == box[5]:
+                    illegal_flag = True
+                    box_color = [230, 100, 100]
+                    box_thick = 10
+                    break
+            cv2.rectangle(image, box[3], box[4], box_color, box_thick)
             predicted_class = class_names[box[0]]
             label = '{} {:.2f}'.format(predicted_class, box[1])
-
-            cv2.rectangle(image, box[3], box[4], colors[box[0]], 1)
+            # cv2.rectangle(image, box[3], box[4], box_color, 1)
             cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
 
             # 画追踪编号
             if box[5] != -1:
-                cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+                cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 1, colors[box[0]], 2)
                 judgeBreak = 0
                 for track in tracks:
                     if box[5] != track[0]:
@@ -198,3 +209,21 @@ def draw_result(image, boxes, class_names, colors, tracks, mode=False):
             if box[0] == 6 and box[6] is not None:
                 cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
     return image
+
+
+def judge_illegal_change_lanes(img, boxes, lane_lines, illegal_boxes_number):
+    for box in boxes:
+        for line in lane_lines:
+            mid_point = [int((box[3][0] + box[4][0]) / 2), box[4][1]]
+            k1 = (line[0][1] - line[1][1]) / (line[0][0] - line[1][0])
+            if mid_point[0] == line[1][0]:
+                mid_point[0] = mid_point[0] + 1
+            k2 = (mid_point[1] - line[1][1]) / (mid_point[0] - line[1][0])
+            if abs(k1 - k2) < 0.05 and box[4][1] > line[0][1]:
+                if box[5] != -1:
+                    illegal_boxes_number.append(box[5])
+                # cv2.line(img, (mid_point[0], mid_point[1]), (line[1][0], line[1][1]), [255, 0, 255], 4)
+                # return True
+    # return False
+
+

@@ -44,7 +44,7 @@ def tracker_update(input_boxes, frame, encoder, tracker):
     tracker_boxes = []
     count = 0
     for box in input_boxes:
-        if box[0] == 2:
+        if box[0] == 2 or box[0] == 3:
             # continue
             # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
             count += 1
@@ -80,9 +80,10 @@ def tracker_update(input_boxes, frame, encoder, tracker):
 
 
 def YOLO():
-    global xmin, ymin, xmax, ymax, flag
+    global xmin, ymin, xmax, ymax, flag, person_first_point
     _points = []
     lane_lines = []
+    people = []
     encoder, tracker = init_deep_sort()
     plate_model = plate.LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
     class_names = get_names(conf.names_path)
@@ -128,6 +129,7 @@ def YOLO():
     image_width = darknet.network_width(netMain)
     image_height = darknet.network_height(netMain)
     tracks = []
+    illegal_boxes_number = []
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(image_width, image_height, 3)
 
@@ -166,14 +168,17 @@ def YOLO():
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb, plate_model)
 
+        # 检测违规变道
+        judge_illegal_change_lanes(frame_rgb, boxes, lane_lines, illegal_boxes_number)
+
         # 画出预测结果
-        frame_rgb = draw_result(frame_rgb, boxes, class_names, colors, tracks)
+        frame_rgb = draw_result(frame_rgb, boxes, class_names, colors, tracks, illegal_boxes_number)
         zebra.draw_line(frame_rgb, xmin, ymin, xmax, ymax)
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
         lane_line.draw_lines(frame_rgb, lane_lines)
 
         # 打印预测信息
-        print_info(boxes, time.time() - prev_time, class_names)
+        # print_info(boxes, time.time() - prev_time, class_names)
 
         # 显示图片
         out_win = "result"
