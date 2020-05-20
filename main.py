@@ -2,193 +2,105 @@ import os
 import time
 import darknet
 import numpy as np
-import model.plate as plate
+
+from model.lane_line import draw_lane_lines
+from model.plate import LPR
 from model.car import get_license_plate
 from model.util.point_util import *
-from model.util import generate_detections as gdet
 from model.conf import conf
 from model.detect_color import traffic_light
-from model.deep_sort import preprocessing, nn_matching
-from model.deep_sort.detection import Detection
-from model.deep_sort.tracker import Tracker
-from model import zebra
-from model import lane_line
+from model.zebra import Zebra, get_zebra_line, draw_zebra_line
 import cv2
 
-netMain = None
-metaMain = None
-altNames = None
 
-xmin = 0
-ymin = 0
-xmax = 0
-ymax = 0
-flag = True
+class Data:
+    tracks = []  # 对应追踪编号的轨迹
+    illegal_boxes_number = []  # 违规变道车的追踪编号
+    lane_lines = []  # 车道线
+    zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
 
+    init_flag = True  # 首次运行标志位
 
-def init_deep_sort():
-    """
-    初始化deep sort
-    """
-    encoder = gdet.create_box_encoder(conf.trackerConf.model_filename, batch_size=1)
-    metric = nn_matching.NearestNeighborDistanceMetric("cosine", conf.trackerConf.max_cosine_distance,
-                                                       conf.trackerConf.nn_budget)
-    tracker = Tracker(metric)
-    return encoder, tracker
+    class_names = get_names(conf.names_path)  # 标签名称
+    colors = get_colors(class_names)  # 每个标签对应的颜色
 
 
-def tracker_update(input_boxes, frame, encoder, tracker):
-    """
-    更新tracker
-    """
-    tracker_boxes = []
-    count = 0
-    for box in input_boxes:
-        if box[0] == 2 or box[0] == 3:
-            # continue
-            # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
-            count += 1
-            tracker_boxes.append([box[3][0], box[3][1], box[4][0] - box[3][0], box[4][1] - box[3][1], box[0], box[1]])
+class Model:
+    def __init__(self):
+        # 追踪器模型
+        self.encoder, self.tracker = init_deep_sort()
 
-    if len(tracker_boxes) > 0:
-        features = encoder(frame, np.array(tracker_boxes)[:, 0:4].tolist())
-
-        # score to 1.0 here).
-        detections = [Detection(bbox, 1.0, feature) for bbox, feature in zip(tracker_boxes, features)]
-
-        # Run non-maxima suppression.
-        boxes = np.array([d.tlwh for d in detections])
-        scores = np.array([d.confidence for d in detections])
-        indices = preprocessing.non_max_suppression(boxes, conf.trackerConf.nms_max_overlap, scores)
-        detections = [detections[i] for i in indices]
-
-        # Call the tracker
-        tracker.predict()
-        tracker.update(detections)
-
-        i = 0
-        for track in tracker.tracks:
-            if not track.is_confirmed() or track.time_since_update > 1:
-                continue
-            if i >= count:
-                continue
-            bbox = track.to_tlbr()
-            i += 1
-            input_boxes = match_box(input_boxes, bbox, int(track.track_id))
-
-    return input_boxes
+    # darknet 模型
+    netMain = darknet.load_net_custom(conf.cfg_path.encode("ascii"), conf.weight_path.encode("ascii"), 0, 1)
+    metaMain = darknet.load_meta(conf.radar_data_path.encode("ascii"))
+    image_width = darknet.network_width(netMain)
+    image_height = darknet.network_height(netMain)
+    darknet_image = darknet.make_image(image_width, image_height, 3)
+    # 车牌识别模型
+    plate_model = LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
 
 
 def YOLO():
-    global xmin, ymin, xmax, ymax, flag, person_first_point
-    _points = []
-    lane_lines = []
-    people = []
-    encoder, tracker = init_deep_sort()
-    plate_model = plate.LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
-    class_names = get_names(conf.names_path)
-    colors = get_colors(class_names)
-    global metaMain, netMain, altNames
-    configPath = conf.cfg_path
-    weightPath = conf.weight_path
-    metaPath = conf.radar_data_path
-    if not os.path.exists(configPath):
-        raise ValueError("Invalid config path `" + os.path.abspath(configPath) + "`")
-    if not os.path.exists(weightPath):
-        raise ValueError("Invalid weight path `" + os.path.abspath(weightPath) + "`")
-    if not os.path.exists(metaPath):
-        raise ValueError("Invalid data file path `" + os.path.abspath(metaPath) + "`")
-    if netMain is None:
-        netMain = darknet.load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0,
-                                          1)  # batch size = 1
-    if metaMain is None:
-        metaMain = darknet.load_meta(metaPath.encode("ascii"))
-    if altNames is None:
-        try:
-            with open(metaPath) as metaFH:
-                metaContents = metaFH.read()
-                import re
-                match = re.search("names *= *(.*)$", metaContents,
-                                  re.IGNORECASE | re.MULTILINE)
-                if match:
-                    result = match.group(1)
-                else:
-                    result = None
-                try:
-                    if os.path.exists(result):
-                        with open(result) as namesFH:
-                            namesList = namesFH.read().strip().split("\n")
-                            altNames = [x.strip() for x in namesList]
-                except TypeError:
-                    pass
-        except Exception:
-            pass
-    cap = cv2.VideoCapture(conf.video_path)
+    data = Data()
+    model = Model()
     print("Starting the YOLO loop...")
 
-    image_width = darknet.network_width(netMain)
-    image_height = darknet.network_height(netMain)
-    tracks = []
-    illegal_boxes_number = []
-    # Create an image we reuse for each detect
-    darknet_image = darknet.make_image(image_width, image_height, 3)
+    cap = cv2.VideoCapture(conf.video_path)
 
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
         ret, frame_test = cap.read()
-        if flag:
-            xmin, ymin, xmax, ymax = zebra.zebra(frame_read)
-            lane_lines = lane_line.lane_lines(frame_test, xmin, ymin, xmax, ymax, _points)
-        flag = False
+
+        if data.init_flag:
+            data.zebra_line = get_zebra_line(frame_read)
+            data.lane_lines = lane_line.lane_lines(frame_test, data.zebra_line)
+        data.init_flag = False
 
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
-        frame_resized = cv2.resize(frame_rgb, (image_width, image_height), interpolation=cv2.INTER_LINEAR)
+        frame_resized = cv2.resize(frame_rgb, (model.image_width, model.image_height), interpolation=cv2.INTER_LINEAR)
 
-        darknet.copy_image_from_bytes(darknet_image, frame_resized.tobytes())
+        darknet.copy_image_from_bytes(model.darknet_image, frame_resized.tobytes())
 
         # 类别编号  置信度 (x,y,w,h)
-        detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=conf.thresh)
+        detections = darknet.detect_image(model.netMain, model.metaMain, model.darknet_image, thresh=conf.thresh)
 
         # 类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
         boxes = convert_output(detections)
 
         # 更新tracker
-        boxes = tracker_update(boxes, frame_resized, encoder, tracker)
+        boxes = tracker_update(boxes, frame_resized, model.encoder, model.tracker)
 
         # 红绿灯的颜色放在box最后面
         boxes = traffic_light(boxes, frame_rgb)
 
         # 把识别框映射为输入图片大小
-        boxes = cast_origin(boxes, image_width, image_height, frame_rgb.shape)
+        boxes = cast_origin(boxes, model.image_width, model.image_height, frame_rgb.shape)
 
         # 制作轨迹
-        make_track(boxes, tracks)
+        make_track(boxes, data.tracks)
 
         # 车牌识别
-        boxes = get_license_plate(boxes, frame_rgb, plate_model)
+        boxes = get_license_plate(boxes, frame_rgb, model.plate_model)
 
         # 检测违规变道
-        judge_illegal_change_lanes(frame_rgb, boxes, lane_lines, illegal_boxes_number)
+        judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines, data.illegal_boxes_number)
 
         # 画出预测结果
-        frame_rgb = draw_result(frame_rgb, boxes, class_names, colors, tracks, illegal_boxes_number)
-        zebra.draw_line(frame_rgb, xmin, ymin, xmax, ymax)
-        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
-        lane_line.draw_lines(frame_rgb, lane_lines)
+        frame_rgb = draw_result(frame_rgb, boxes, data)
+        draw_zebra_line(frame_rgb, data.zebra_line)
+        draw_lane_lines(frame_rgb, data.lane_lines)
 
         # 打印预测信息
-        # print_info(boxes, time.time() - prev_time, class_names)
+        print_info(boxes, time.time() - prev_time, data.class_names)
 
         # 显示图片
         out_win = "result"
         cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
-        # cv2.setWindowProperty(out_win, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        # frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
+        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
         cv2.imshow(out_win, frame_rgb)
         if cv2.waitKey(1) >= 0:
             cv2.waitKey(0)
-    cap.release()
 
 
 if __name__ == "__main__":

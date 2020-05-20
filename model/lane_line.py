@@ -12,7 +12,10 @@ def roi_mask(img, vertices):
     return masked_img
 
 
-def draw_lines(img, lane_lines, color=[0, 0, 255], thickness=2):
+def draw_lane_lines(img, lane_lines, color=[255, 0, 0], thickness=2):
+    """
+    画车道线
+    """
     for line in lane_lines:
         cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), color, thickness)
 
@@ -116,10 +119,11 @@ def deal_picture(img, lane_lines, zebra_crossing, points):
                 , points)
 
 
-def lane_lines(img, xmin, ymin, xmax, ymax, points):
+def lane_lines(img, zebra_line, points=None):
+    points = []
     lane_lines = []
-    point1 = [0, (ymax + ymin) / 4]
-    point2 = [img.shape[1], (ymax + ymin) / 4]
+    point1 = [0, (zebra_line.ymax + zebra_line.ymin) / 4]
+    point2 = [img.shape[1], (zebra_line.ymax + zebra_line.ymin) / 4]
     zebra_crossing = [point1, point2]
     deal_picture(img, lane_lines, zebra_crossing, points)
     return lane_lines

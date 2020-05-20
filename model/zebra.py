@@ -5,12 +5,24 @@ from PIL import Image
 DEBUG = False
 
 
-def draw_line(img, xmin, ymin, xmax, ymax):
-    h = ymax - ymin
+class Zebra:
+
+    def __init__(self, xmax, xmin, ymax, ymin):
+        self.ymax = ymax
+        self.xmax = xmax
+        self.xmin = xmin
+        self.ymin = ymin
+
+
+def draw_zebra_line(img, zebra_line, thickness=2):
+    """
+    画斑马线
+    """
+    h = zebra_line.ymax - zebra_line.ymin
     a = 1 / 2 * h
-    green = (0, 255, 0)
-    # cv2.rectangle(img, (0, int(ymin)), (2 * int(xmax), int(ymax)), (0, 255, 0), 3)
-    cv2.line(img, (0, int(ymin + a)), (2 * int(xmax), int(ymin + a)), green)
+    # cv2.rectangle(img, (0, int(zebra_line.ymin)), (2 * int(zebra_line.xmax), int(zebra_line.ymax)), (0, 255, 0), 3)
+    cv2.line(img, (0, int(zebra_line.ymin + a)), (2 * int(zebra_line.xmax), int(zebra_line.ymin + a)), (255, 0, 0),
+             thickness)
 
 
 def delete_contours(contours, delete_list):
@@ -121,7 +133,7 @@ def get_location(indices, labels, Ni, Nj):
         return 1, ((xmin, ymin), (xmax, ymax))
 
 
-def zebra(img):
+def get_zebra_line(img):
     global height, weight
     height = img.shape[0]
     weight = img.shape[1]
@@ -148,4 +160,5 @@ def zebra(img):
         # cv2.rectangle(img, location[0], location[1], (255, 0, 255), 3)
         (xmin, ymin) = location[0]
         (xmax, ymax) = location[1]
-        return xmin, ymin, xmax, ymax
+        return Zebra(xmax=xmax, xmin=xmin, ymax=ymax, ymin=ymin)
+    return Zebra(0, 0, 0, 0)

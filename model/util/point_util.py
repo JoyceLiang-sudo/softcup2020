@@ -4,9 +4,13 @@
 """
 from model.conf import conf
 from PIL import Image, ImageDraw
-import numpy
+import numpy as np
 import cv2
 from model import lane_line
+from model.deep_sort import preprocessing, nn_matching
+from model.deep_sort.detection import Detection
+from model.deep_sort.tracker import Tracker
+from model.util import generate_detections as gdet
 
 
 def calculate_variance(p1, p2, p3, p4):
@@ -150,7 +154,7 @@ def print_info(boxes, time, class_names):
     print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
 
 
-def draw_result(image, boxes, class_names, colors, tracks, illegal_boxes_number, mode=False):
+def draw_result(image, boxes, data, mode=False):
     """
     画出预测结果
     """
@@ -159,59 +163,63 @@ def draw_result(image, boxes, class_names, colors, tracks, illegal_boxes_number,
         draw = ImageDraw.Draw(image)
 
         for box in boxes:
-            predicted_class = class_names[box[0]]
+            predicted_class = data.class_names[box[0]]
             label = '{} {:.2f}'.format(predicted_class, box[1])
 
-            draw.rectangle([tuple(box[3]), tuple(box[4])], outline=colors[box[0]])
-            draw.text((box[3][0], box[3][1] - 5), label, colors[box[0]], font=conf.fontStyle)
+            draw.rectangle([tuple(box[3]), tuple(box[4])], outline=data.colors[box[0]])
+            draw.text((box[3][0], box[3][1] - 5), label, data.colors[box[0]], font=conf.fontStyle)
             # 画追踪编号
             if box[5] != -1:
-                draw.text(box[2], str(box[5]), colors[box[0]], font=conf.fontStyle)
+                draw.text(box[2], str(box[5]), data.colors[box[0]], font=conf.fontStyle)
             # 画车牌
             if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-                draw.text(box[2], box[6], colors[box[0]], font=conf.fontStyle)
-        image = cv2.cvtColor(numpy.asarray(image), cv2.COLOR_RGB2BGR)
+                draw.text(box[2], box[6], data.colors[box[0]], font=conf.fontStyle)
+        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
     else:
         illegal_flag = False
         for box in boxes:
-            box_color = colors[box[0]]
+            box_color = data.colors[box[0]]
             box_thick = 1
-            for number in illegal_boxes_number:
+            for number in data.illegal_boxes_number:
                 if number == box[5]:
                     illegal_flag = True
                     box_color = [230, 100, 100]
                     box_thick = 10
                     break
             cv2.rectangle(image, box[3], box[4], box_color, box_thick)
-            predicted_class = class_names[box[0]]
+            predicted_class = data.class_names[box[0]]
             label = '{} {:.2f}'.format(predicted_class, box[1])
             # cv2.rectangle(image, box[3], box[4], box_color, 1)
-            cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+            cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
 
             # 画追踪编号
             if box[5] != -1:
-                cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 1, colors[box[0]], 2)
+                cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 1, data.colors[box[0]], 2)
                 judgeBreak = 0
-                for track in tracks:
+                for track in data.tracks:
                     if box[5] != track[0]:
                         continue
                     i = 1
                     while i < len(track) - 1:
-                        cv2.circle(image, track[i], 1, colors[box[0]], -1)
+                        cv2.circle(image, track[i], 1, data.colors[box[0]], -1)
                         i = i + 1
                         judgeBreak = 1
                     if judgeBreak == 1:
                         break
             # # 画车牌
             # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-            #     cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+            #     cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
             # 红绿灯
             if box[0] == 6 and box[6] is not None:
-                cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[box[0]], 1)
+                cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
     return image
 
 
 def judge_illegal_change_lanes(img, boxes, lane_lines, illegal_boxes_number):
+    """
+    判断违规变道
+    """
+
     for box in boxes:
         for line in lane_lines:
             mid_point = [int((box[3][0] + box[4][0]) / 2), box[4][1]]
@@ -227,3 +235,54 @@ def judge_illegal_change_lanes(img, boxes, lane_lines, illegal_boxes_number):
     # return False
 
 
+def tracker_update(input_boxes, frame, encoder, tracker):
+    """
+    更新tracker
+    """
+    tracker_boxes = []
+    count = 0
+    for box in input_boxes:
+        if box[0] == 2 or box[0] == 3:
+            # continue
+            # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
+            count += 1
+            tracker_boxes.append([box[3][0], box[3][1], box[4][0] - box[3][0], box[4][1] - box[3][1], box[0], box[1]])
+
+    if len(tracker_boxes) > 0:
+        features = encoder(frame, np.array(tracker_boxes)[:, 0:4].tolist())
+
+        # score to 1.0 here).
+        detections = [Detection(bbox, 1.0, feature) for bbox, feature in zip(tracker_boxes, features)]
+
+        # Run non-maxima suppression.
+        boxes = np.array([d.tlwh for d in detections])
+        scores = np.array([d.confidence for d in detections])
+        indices = preprocessing.non_max_suppression(boxes, conf.trackerConf.nms_max_overlap, scores)
+        detections = [detections[i] for i in indices]
+
+        # Call the tracker
+        tracker.predict()
+        tracker.update(detections)
+
+        i = 0
+        for track in tracker.tracks:
+            if not track.is_confirmed() or track.time_since_update > 1:
+                continue
+            if i >= count:
+                continue
+            bbox = track.to_tlbr()
+            i += 1
+            input_boxes = match_box(input_boxes, bbox, int(track.track_id))
+
+    return input_boxes
+
+
+def init_deep_sort():
+    """
+    初始化deep sort
+    """
+    encoder = gdet.create_box_encoder(conf.trackerConf.model_filename, batch_size=1)
+    metric = nn_matching.NearestNeighborDistanceMetric("cosine", conf.trackerConf.max_cosine_distance,
+                                                       conf.trackerConf.nn_budget)
+    tracker = Tracker(metric)
+    return encoder, tracker
