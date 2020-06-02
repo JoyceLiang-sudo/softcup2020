@@ -12,6 +12,10 @@ def roi_mask(img, vertices):
     return masked_img
 
 
+def draw_stop_line(img, stop_line, color=[200, 255, 0], thickness=2):
+    cv2.line(img, (stop_line[0][0], stop_line[0][1]), (stop_line[1][0], stop_line[1][1]), color, thickness)
+
+
 def draw_lane_lines(img, lane_lines, color=[255, 0, 0], thickness=2):
     """
     画车道线
@@ -78,6 +82,18 @@ def get_intersection_point(line1, line2):
     return point
 
 
+def find_left_line(lane_lines):
+    if len(lane_lines) <= 0:
+        return 0
+    left_x = lane_lines[0][0][0]
+    left_line = lane_lines[0]
+    for line in lane_lines:
+        if left_x > line[0][0]:
+            left_x = line[0][0]
+            left_line = line
+    return left_line
+
+
 def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, lane_lines, zebra_crossing, points):
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len,
                             maxLineGap=max_line_gap)
@@ -98,7 +114,15 @@ def deal_contours(img):
     return img
 
 
-def deal_picture(img, lane_lines, zebra_crossing, points):
+def get_stop_line(img, zebra_width, zebra_crossing, left_line):
+    stop_line = [[zebra_crossing[0][0], int(zebra_crossing[0][1] * 2 + zebra_width * 0.7)],
+                 [zebra_crossing[1][0], int(zebra_crossing[1][1] * 2 + zebra_width * 0.7)]]
+    left_point = get_intersection_point(stop_line, left_line)
+    real_stop_line = [left_point, [zebra_crossing[1][0], int(zebra_crossing[1][1] * 2 + zebra_width * 0.7)]]
+    return real_stop_line
+
+
+def deal_picture(img, lane_lines, zebra_crossing, points, zebra_width):
     blur_ksize = 5
     canny_lthreshold = 100
     canny_hthreshold = 150
@@ -117,16 +141,20 @@ def deal_picture(img, lane_lines, zebra_crossing, points):
     roi_edges = roi_mask(edges, roi_vtx)
     hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, lane_lines, zebra_crossing
                 , points)
+    left_line = find_left_line(lane_lines)
+    stop_line = get_stop_line(roi_edges, zebra_width, zebra_crossing, left_line)
+    return stop_line
 
 
 def lane_lines(img, zebra_line, points=None):
     points = []
     lane_lines = []
+    zebra_width = zebra_line.ymax - zebra_line.ymin
     point1 = [0, (zebra_line.ymax + zebra_line.ymin) / 4]
     point2 = [img.shape[1], (zebra_line.ymax + zebra_line.ymin) / 4]
     zebra_crossing = [point1, point2]
-    deal_picture(img, lane_lines, zebra_crossing, points)
-    return lane_lines
+    stop_line = deal_picture(img, lane_lines, zebra_crossing, points, zebra_width)
+    return lane_lines, stop_line
 
 
 def cal_distance(x1, y1, x2, y2):

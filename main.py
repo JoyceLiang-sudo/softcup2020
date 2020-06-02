@@ -3,7 +3,7 @@ import time
 import darknet
 import numpy as np
 
-from model.lane_line import draw_lane_lines
+from model.lane_line import draw_lane_lines, draw_stop_line
 from model.plate import LPR
 from model.car import get_license_plate
 from model.util.point_util import *
@@ -17,6 +17,7 @@ class Data:
     tracks = []  # 对应追踪编号的轨迹
     illegal_boxes_number = []  # 违规变道车的追踪编号
     lane_lines = []  # 车道线
+    stop_line = []  # 停车线
     zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
 
     init_flag = True  # 首次运行标志位
@@ -54,7 +55,7 @@ def YOLO():
 
         if data.init_flag:
             data.zebra_line = get_zebra_line(frame_read)
-            data.lane_lines = lane_line.lane_lines(frame_test, data.zebra_line)
+            data.lane_lines, data.stop_line = lane_line.lane_lines(frame_test, data.zebra_line)
         data.init_flag = False
 
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
@@ -90,6 +91,7 @@ def YOLO():
         frame_rgb = draw_result(frame_rgb, boxes, data)
         draw_zebra_line(frame_rgb, data.zebra_line)
         draw_lane_lines(frame_rgb, data.lane_lines)
+        draw_stop_line(frame_rgb, data.stop_line)
 
         # 打印预测信息
         print_info(boxes, time.time() - prev_time, data.class_names)
