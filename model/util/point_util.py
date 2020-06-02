@@ -118,9 +118,7 @@ def make_track(boxes, tracks):
                 flag = 1
                 break
         if flag == 0:
-            track = []
-            track.append(box[5])
-            track.append(box[2])
+            track = [box[5], box[2]]
             tracks.append(track)
 
 

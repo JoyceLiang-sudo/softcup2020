@@ -5,7 +5,7 @@ import numpy as np
 
 from model.lane_line import draw_lane_lines, draw_stop_line
 from model.plate import LPR
-from model.car import get_license_plate
+from model.car import get_license_plate, speed_measure, draw_speed_info
 from model.util.point_util import *
 from model.conf import conf
 from model.detect_color import traffic_light
@@ -19,7 +19,7 @@ class Data:
     lane_lines = []  # 车道线
     stop_line = []  # 停车线
     zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
-
+    speeds = []  # 速度信息
     init_flag = True  # 首次运行标志位
 
     class_names = get_names(conf.names_path)  # 标签名称
@@ -81,6 +81,9 @@ def YOLO():
         # 制作轨迹
         make_track(boxes, data.tracks)
 
+        # 计算速度
+        speed_measure(data.tracks, float(time.time() - prev_time), data.speeds)
+
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb, model.plate_model)
 
@@ -92,6 +95,7 @@ def YOLO():
         draw_zebra_line(frame_rgb, data.zebra_line)
         draw_lane_lines(frame_rgb, data.lane_lines)
         draw_stop_line(frame_rgb, data.stop_line)
+        draw_speed_info(frame_rgb, data.speeds, boxes)
 
         # 打印预测信息
         print_info(boxes, time.time() - prev_time, data.class_names)
