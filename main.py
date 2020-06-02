@@ -55,7 +55,7 @@ def YOLO():
 
         if data.init_flag:
             data.zebra_line = get_zebra_line(frame_read)
-            data.lane_lines, data.stop_line = lane_line.lane_lines(frame_test, data.zebra_line)
+            data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_test, data.zebra_line)
         data.init_flag = False
 
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)

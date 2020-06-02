@@ -24,14 +24,15 @@ def draw_lane_lines(img, lane_lines, color=[255, 0, 0], thickness=2):
         cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), color, thickness)
 
 
-def find_lines(lines, lane_lines):
-    lane_lines.clear()
+def find_lines(lines):
+    lane_lines = []
     for line in lines:
         for x1, y1, x2, y2 in line:
             slope = (y2 - y1) / (x2 - x1)
             if slope > 1 or slope < -0.5:
                 line_one = [[x1, y1], [x2, y2]]
                 lane_lines.append(line_one)
+    return lane_lines
 
 
 def extend_lines(img, zebra_crossing, lane_lines, points):
@@ -39,7 +40,6 @@ def extend_lines(img, zebra_crossing, lane_lines, points):
     bottom_points = []
     line_bottom = [[0, img.shape[0]], [img.shape[1], img.shape[0]]]
     line_left = [[0, 0], [1, img.shape[0]]]
-    # points = []
     for line in lane_lines:
         point = get_intersection_point(zebra_crossing, line)
         up_points.append(point)
@@ -94,12 +94,13 @@ def find_left_line(lane_lines):
     return left_line
 
 
-def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, lane_lines, zebra_crossing, points):
+def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, zebra_crossing, points):
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len,
                             maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    find_lines(lines, lane_lines)
+    lane_lines = find_lines(lines)
     extend_lines(line_img, zebra_crossing, lane_lines, points)
+    return lane_lines
 
 
 def deal_contours(img):
@@ -122,7 +123,7 @@ def get_stop_line(img, zebra_width, zebra_crossing, left_line):
     return real_stop_line
 
 
-def deal_picture(img, lane_lines, zebra_crossing, points, zebra_width):
+def deal_picture(img, zebra_crossing, points, zebra_width):
     blur_ksize = 5
     canny_lthreshold = 100
     canny_hthreshold = 150
@@ -139,21 +140,20 @@ def deal_picture(img, lane_lines, zebra_crossing, points, zebra_width):
     edges = cv2.Canny(blur_gray, canny_lthreshold, canny_hthreshold)
     roi_vtx = np.array([[(0, img.shape[0]), (20, 325), (img.shape[1] - 50, 325), (img.shape[1], img.shape[0])]])
     roi_edges = roi_mask(edges, roi_vtx)
-    hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, lane_lines, zebra_crossing
-                , points)
+    lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing
+                             , points)
     left_line = find_left_line(lane_lines)
     stop_line = get_stop_line(roi_edges, zebra_width, zebra_crossing, left_line)
-    return stop_line
+    return lane_lines, stop_line
 
 
-def lane_lines(img, zebra_line, points=None):
+def get_lane_lines(img, zebra_line, points=None):
     points = []
-    lane_lines = []
     zebra_width = zebra_line.ymax - zebra_line.ymin
     point1 = [0, (zebra_line.ymax + zebra_line.ymin) / 4]
     point2 = [img.shape[1], (zebra_line.ymax + zebra_line.ymin) / 4]
     zebra_crossing = [point1, point2]
-    stop_line = deal_picture(img, lane_lines, zebra_crossing, points, zebra_width)
+    lane_lines, stop_line = deal_picture(img, zebra_crossing, points, zebra_width)
     return lane_lines, stop_line
 
 
