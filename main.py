@@ -105,7 +105,11 @@ def YOLO():
         cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
         cv2.imshow(out_win, frame_rgb)
-        if cv2.waitKey(1) >= 0:
+
+        key = cv2.waitKey(1)
+        if key == 27:
+            exit()
+        elif key >= 0:
             cv2.waitKey(0)
 
 
