@@ -20,6 +20,13 @@ def calculate_variance(p1, p2, p3, p4):
     return pow(p1[0] - p3[0], 2) + pow(p1[1] - p3[1], 2) + pow(p2[0] - p4[0], 2) + pow(p2[1] - p4[1], 2)
 
 
+def calculate_distance(p1, p2):
+    """
+    计算两个点的距离
+    """
+    return np.sqrt(pow(p1[0] - p2[0], 2) + pow(p1[1] - p2[1], 2))
+
+
 def find_min(boxes, temp):
     """
     找到最佳匹配的框
@@ -118,9 +125,7 @@ def make_track(boxes, tracks):
                 flag = 1
                 break
         if flag == 0:
-            track = []
-            track.append(box[5])
-            track.append(box[2])
+            track = [box[5], box[2]]
             tracks.append(track)
 
 
