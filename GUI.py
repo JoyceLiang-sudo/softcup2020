@@ -1,0 +1,86 @@
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'GUI.ui'
+#
+# Created by: PyQt5 UI code generator 5.13.0
+#
+# WARNING! All changes made in this file will be lost!
+import sys
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QWidget, QApplication
+
+
+class Ui_Form(QWidget):
+    def __init__(self):
+        super(Ui_Form,self).__init__()
+        self.setupUi(self)
+        self.retranslateUi(self)
+
+    def setupUi(self, Form):
+        Form.setObjectName("Form")
+        Form.resize(1139, 833)
+        self.gridLayout = QtWidgets.QGridLayout(Form)
+        self.gridLayout.setObjectName("gridLayout")
+        self.show_message2 = QtWidgets.QLabel(Form)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.show_message2.sizePolicy().hasHeightForWidth())
+        self.show_message2.setSizePolicy(sizePolicy)
+        self.show_message2.setFrameShape(QtWidgets.QFrame.Box)
+        self.show_message2.setObjectName("show_message2")
+        self.gridLayout.addWidget(self.show_message2, 3, 0, 1, 1)
+        self.show_video = QtWidgets.QLabel(Form)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(5)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.show_video.sizePolicy().hasHeightForWidth())
+        self.show_video.setSizePolicy(sizePolicy)
+        font = QtGui.QFont()
+        font.setBold(False)
+        font.setWeight(50)
+        self.show_video.setFont(font)
+        self.show_video.setFrameShape(QtWidgets.QFrame.Box)
+        self.show_video.setObjectName("show_video")
+        self.gridLayout.addWidget(self.show_video, 2, 1, 2, 1)
+        self.show_message = QtWidgets.QLabel(Form)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.show_message.sizePolicy().hasHeightForWidth())
+        self.show_message.setSizePolicy(sizePolicy)
+        self.show_message.setFrameShape(QtWidgets.QFrame.Box)
+        self.show_message.setObjectName("show_message")
+        self.gridLayout.addWidget(self.show_message, 2, 0, 1, 1)
+        self.label = QtWidgets.QLabel(Form)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
+        self.label.setSizePolicy(sizePolicy)
+        self.label.setMinimumSize(QtCore.QSize(0, 0))
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(22)
+        self.label.setFont(font)
+        self.label.setTextFormat(QtCore.Qt.AutoText)
+        self.label.setObjectName("label")
+        self.gridLayout.addWidget(self.label, 1, 1, 1, 1)
+
+        self.retranslateUi(Form)
+        QtCore.QMetaObject.connectSlotsByName(Form)
+
+    def retranslateUi(self, Form):
+        _translate = QtCore.QCoreApplication.translate
+        Form.setWindowTitle(_translate("Form", "Form"))
+        self.show_message2.setText(_translate("Form", "TextLabel"))
+        self.show_video.setText(_translate("Form", "展示检测结果"))
+        self.show_message.setText(_translate("Form", "违规信息"))
+        self.label.setText(_translate("Form", "                            交通场景智能应用"))
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = Ui_Form()
+    ex.show()
+    sys.exit(app.exec_())
