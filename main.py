@@ -70,7 +70,7 @@ def YOLO():
         boxes = convert_output(detections)
 
         # 更新tracker
-        boxes = tracker_update(boxes, frame_resized, model.encoder, model.tracker)
+        boxes = tracker_update(boxes, frame_resized, model.encoder, model.tracker, conf.trackerConf.track_label)
 
         # 红绿灯的颜色放在box最后面
         boxes = traffic_light(boxes, frame_rgb)
@@ -95,7 +95,7 @@ def YOLO():
         draw_zebra_line(frame_rgb, data.zebra_line)
         draw_lane_lines(frame_rgb, data.lane_lines)
         draw_stop_line(frame_rgb, data.stop_line)
-        draw_speed_info(frame_rgb, data.speeds, boxes)
+        # draw_speed_info(frame_rgb, data.speeds, boxes)
 
         # 打印预测信息
         print_info(boxes, time.time() - prev_time, data.class_names)

@@ -49,8 +49,10 @@ def match_box(boxes, bbox, id):
     for box in boxes:
         temp.append(float(calculate_variance(box[3], box[4], (bbox[0], bbox[1]), (bbox[2], bbox[3]))))
     # 找出最小值
-    i = find_min(boxes, temp)
-    boxes[i][5] = id
+    if min(temp) < 10:
+        boxes[temp.index(min(temp))][5] = id
+    # i = find_min(boxes, temp)
+    # boxes[i][5] = id
     return boxes
 
 
@@ -240,14 +242,14 @@ def judge_illegal_change_lanes(img, boxes, lane_lines, illegal_boxes_number):
     # return False
 
 
-def tracker_update(input_boxes, frame, encoder, tracker):
+def tracker_update(input_boxes, frame, encoder, tracker, track_label):
     """
     更新tracker
     """
     tracker_boxes = []
     count = 0
     for box in input_boxes:
-        if box[0] == 2 or box[0] == 3:
+        if box[0] in track_label:
             # continue
             # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
             count += 1

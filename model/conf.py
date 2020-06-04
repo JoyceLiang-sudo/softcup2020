@@ -7,7 +7,7 @@ import tensorflow as tf
 conf = edict()
 
 # 视频路径，为0则打开内置摄像头
-conf.video_path = "./data/video.avi"
+conf.video_path = "./data/video3.mp4"
 # conf.video_path = 0
 
 # yolo配置文件
@@ -34,6 +34,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 # deep sort 的配置文件
 conf.trackerConf = edict()
 
+conf.trackerConf.track_label = [2, 3, 4]  # 追踪器要追踪的标签号
 conf.trackerConf.max_cosine_distance = 0.3
 conf.trackerConf.nn_budget = None
 conf.trackerConf.nms_max_overlap = 0.7
