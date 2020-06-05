@@ -122,12 +122,12 @@ def make_track(boxes, tracks):
             continue
         flag = 0
         for _track in tracks:
-            if _track[0] == box[5]:
+            if _track[1] == box[5]:
                 _track.append(box[2])
                 flag = 1
                 break
         if flag == 0:
-            track = [box[5], box[2]]
+            track = [box[0], box[5], box[2]]
             tracks.append(track)
 
 
@@ -183,17 +183,22 @@ def draw_result(image, boxes, data, mode=False):
                 draw.text(box[2], box[6], data.colors[box[0]], font=conf.fontStyle)
         image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
     else:
-        illegal_flag = False
         for box in boxes:
             box_color = data.colors[box[0]]
+            box_color2 = data.colors[box[0]]
             box_thick = 1
             for number in data.illegal_boxes_number:
                 if number == box[5]:
-                    illegal_flag = True
                     box_color = [230, 100, 100]
                     box_thick = 10
                     break
+            for car_person in data.no_comity_pedestrian_cars_people:
+                if car_person[0] == box[5]:
+                    box_color = [0, 0, 255]
+                    box_thick = 10
+                    break
             cv2.rectangle(image, box[3], box[4], box_color, box_thick)
+            # cv2.rectangle(image, box[3], box[4], box_color2, box_thick)
             predicted_class = data.class_names[box[0]]
             label = '{} {:.2f}'.format(predicted_class, box[1])
             # cv2.rectangle(image, box[3], box[4], box_color, 1)
@@ -202,16 +207,16 @@ def draw_result(image, boxes, data, mode=False):
             # 画追踪编号
             if box[5] != -1:
                 cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 1, data.colors[box[0]], 2)
-                judgeBreak = 0
+                judge_break = 0
                 for track in data.tracks:
-                    if box[5] != track[0]:
+                    if box[5] != track[1]:
                         continue
-                    i = 1
+                    i = 2
                     while i < len(track) - 1:
                         cv2.circle(image, track[i], 1, data.colors[box[0]], -1)
                         i = i + 1
-                        judgeBreak = 1
-                    if judgeBreak == 1:
+                        judge_break = 1
+                    if judge_break == 1:
                         break
             # # 画车牌
             # if (box[0] == 1 or box[0] == 2) and box[6] is not None:

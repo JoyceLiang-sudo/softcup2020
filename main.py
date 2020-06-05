@@ -10,6 +10,7 @@ from model.util.point_util import *
 from model.conf import conf
 from model.detect_color import traffic_light
 from model.zebra import Zebra, get_zebra_line, draw_zebra_line
+from model.comity_pedestrian import judge_comity_pedestrian, Comity_Pedestrian
 import cv2
 
 
@@ -22,6 +23,7 @@ class Data:
     speeds = []  # 速度信息
     init_flag = True  # 首次运行标志位
 
+    no_comity_pedestrian_cars_people = []
     class_names = get_names(conf.names_path)  # 标签名称
     colors = get_colors(class_names)  # 每个标签对应的颜色
 
@@ -44,6 +46,7 @@ class Model:
 def YOLO():
     data = Data()
     model = Model()
+    comity_pedestrian = Comity_Pedestrian()
     print("Starting the YOLO loop...")
 
     cap = cv2.VideoCapture(conf.video_path)
@@ -86,6 +89,9 @@ def YOLO():
 
         # 车牌识别
         boxes = get_license_plate(boxes, frame_rgb, model.plate_model)
+
+        # 检测礼让行人
+        data.no_comity_pedestrian_cars_people = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
 
         # 检测违规变道
         judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines, data.illegal_boxes_number)
