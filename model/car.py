@@ -44,12 +44,12 @@ def speed_measure(tracks, time, speeds):
     追踪编号 中点 速度
     """
     for track in tracks:
-        if len(track) > 2:
+        if len(track) > 3:
             now_speed = get_speed(track[-1], track[-2], time)  # 这一帧的速度
             add_flag = False
             # 遍历速度列表
             for speed in speeds:
-                if speed[0] == track[0]:
+                if speed[0] == track[1]:
                     # 速度列表里有此物体上一帧的速度
                     speed[1] = track[-1]
                     speed[2] = now_speed
@@ -57,7 +57,7 @@ def speed_measure(tracks, time, speeds):
                     break
             if not add_flag:
                 # 速度列表里没有此物体的速度
-                speeds.append([track[0], track[-1], now_speed])
+                speeds.append([track[1], track[-1], now_speed])
 
 
 def draw_speed_info(image, speeds, boxes):
