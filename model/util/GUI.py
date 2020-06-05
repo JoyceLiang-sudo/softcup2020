@@ -12,11 +12,14 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QWidget, QApplication
 
+
 class Ui_Form(QWidget):
     def __init__(self):
-        super(Ui_Form,self).__init__()
+        super(Ui_Form, self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
+        self.close_flag = True
+
     def setupUi(self, Form):
         Form.setObjectName("Form")
         Form.resize(1139, 833)
@@ -81,10 +84,7 @@ class Ui_Form(QWidget):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
         self.show_video.setText(_translate("Form", "展示检测结果"))
-        self.label.setText(_translate("Form", "                            交通场景智能应用"))
+        self.label.setText(_translate("Form", "\t\t\t\t交通场景智能应用\t\t\t\t"))
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = Ui_Form()
-    ex.show()
-    sys.exit(app.exec_())
+    def closeEvent(self, event):
+        self.close_flag = False

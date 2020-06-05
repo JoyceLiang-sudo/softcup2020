@@ -2,7 +2,9 @@ import os
 import time
 import darknet
 import numpy as np
+import sys
 
+from PyQt5.QtWidgets import QApplication
 from model.lane_line import draw_lane_lines, draw_stop_line
 from model.plate import LPR
 from model.car import get_license_plate, speed_measure, draw_speed_info
@@ -10,10 +12,11 @@ from model.util.point_util import *
 from model.conf import conf
 from model.detect_color import traffic_light
 from model.zebra import Zebra, get_zebra_line, draw_zebra_line
+from model.util.thread import QTThread
 import cv2
 
 
-class Data:
+class Data(object):
     tracks = []  # 对应追踪编号的轨迹
     illegal_boxes_number = []  # 违规变道车的追踪编号
     lane_lines = []  # 车道线
@@ -26,7 +29,7 @@ class Data:
     colors = get_colors(class_names)  # 每个标签对应的颜色
 
 
-class Model:
+class Model(object):
     def __init__(self):
         # 追踪器模型
         self.encoder, self.tracker = init_deep_sort()
@@ -44,18 +47,17 @@ class Model:
 def YOLO():
     data = Data()
     model = Model()
-    print("Starting the YOLO loop...")
-
+    qt_thread = QTThread("qt_thread")
+    qt_thread.start()
     cap = cv2.VideoCapture(conf.video_path)
 
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
-        ret, frame_test = cap.read()
 
         if data.init_flag:
             data.zebra_line = get_zebra_line(frame_read)
-            data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_test, data.zebra_line)
+            data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_read, data.zebra_line)
         data.init_flag = False
 
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
@@ -101,17 +103,26 @@ def YOLO():
         print_info(boxes, time.time() - prev_time, data.class_names)
 
         # 显示图片
-        out_win = "result"
-        cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
-        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
-        cv2.imshow(out_win, frame_rgb)
+        qt_thread.process_ready = True
+        qt_thread.set_image(frame_rgb)
+        print_qt_info(boxes, time.time() - prev_time, data.class_names, qt_thread)
+        while not qt_thread.process_ready:
+            time.sleep(0.01)
+        if not qt_thread.is_alive():
+            exit(0)
+        # out_win = "result"
+        # cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
+        # frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
+        # cv2.imshow(out_win, frame_rgb)
 
         key = cv2.waitKey(1)
         if key == 27:
-            exit()
+            exit(0)
         elif key >= 0:
             cv2.waitKey(0)
 
 
 if __name__ == "__main__":
+    app = QApplication(sys.argv)
     YOLO()
+    sys.exit(app.exec_())
