@@ -53,6 +53,7 @@ def extend_lines(img, zebra_crossing, lane_lines, points):
     lane_lines.clear()
     i = 0
     while i < len(points[0]):
+        # points[0]、points[1]分别为上下点集
         line_one = [[points[0][i][0], points[0][i][1]], [points[1][i][0], points[1][i][1]]]
         lane_lines.append(line_one)
         i = i + 1
@@ -109,13 +110,11 @@ def deal_contours(img):
         rect = cv2.minAreaRect(contours[0])
         x, y = rect[0]
         cv2.circle(img, (int(x), int(y)), 3, (0, 255, 0), 5)
-        width, height = rect[1]
-        angle = rect[2]
         cv2.drawContours(img, contour, -1, (255, 255, 0), 3)
     return img
 
 
-def get_stop_line(img, zebra_width, zebra_crossing, left_line):
+def get_stop_line(zebra_width, zebra_crossing, left_line):
     stop_line = [[zebra_crossing[0][0], int(zebra_crossing[0][1] * 2 + zebra_width * 0.7)],
                  [zebra_crossing[1][0], int(zebra_crossing[1][1] * 2 + zebra_width * 0.7)]]
     left_point = get_intersection_point(stop_line, left_line)
@@ -142,12 +141,13 @@ def deal_picture(img, zebra_crossing, points, zebra_width):
     roi_edges = roi_mask(edges, roi_vtx)
     lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing
                              , points)
-    left_line = find_left_line(lane_lines)
-    stop_line = get_stop_line(roi_edges, zebra_width, zebra_crossing, left_line)
+    # 车道线排序
+    lane_lines.sort()
+    stop_line = get_stop_line(zebra_width, zebra_crossing, lane_lines[0])
     return lane_lines, stop_line
 
 
-def get_lane_lines(img, zebra_line, points=None):
+def get_lane_lines(img, zebra_line):
     points = []
     zebra_width = zebra_line.ymax - zebra_line.ymin
     point1 = [0, (zebra_line.ymax + zebra_line.ymin) / 4]
