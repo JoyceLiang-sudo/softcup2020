@@ -11,6 +11,7 @@ from model.conf import conf
 from model.detect_color import traffic_light
 from model.zebra import Zebra, get_zebra_line, draw_zebra_line
 from model.comity_pedestrian import judge_comity_pedestrian, Comity_Pedestrian
+from model.traffic_flow import get_traffic_flow, Traffic_Flow
 import cv2
 
 
@@ -21,9 +22,10 @@ class Data:
     stop_line = []  # 停车线
     zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
     speeds = []  # 速度信息
+    traffic_flow = 0
     init_flag = True  # 首次运行标志位
 
-    no_comity_pedestrian_cars_people = []
+    no_comity_pedestrian_cars_number = []  # 不礼让行人的车号
     class_names = get_names(conf.names_path)  # 标签名称
     colors = get_colors(class_names)  # 每个标签对应的颜色
 
@@ -47,6 +49,7 @@ def YOLO():
     data = Data()
     model = Model()
     comity_pedestrian = Comity_Pedestrian()
+    traffic_flow = Traffic_Flow()
     print("Starting the YOLO loop...")
 
     cap = cv2.VideoCapture(conf.video_path)
@@ -54,11 +57,11 @@ def YOLO():
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
-        if frame_read is None:
-            exit(0)
+
         if data.init_flag:
             data.zebra_line = get_zebra_line(frame_read)
             data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_read, data.zebra_line)
+            traffic_flow.pre_time = time.time()
             data.init_flag = False
 
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
@@ -91,10 +94,14 @@ def YOLO():
         boxes = get_license_plate(boxes, frame_rgb, model.plate_model)
 
         # 检测礼让行人
-        data.no_comity_pedestrian_cars_people = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
+        data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
 
         # 检测违规变道
         judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines, data.illegal_boxes_number)
+
+        # 检测车流量
+        data.traffic_flow = get_traffic_flow(frame_rgb, traffic_flow, data.tracks, time.time())
+        print("车流量为：%d" % data.traffic_flow)
 
         # 画出预测结果
         frame_rgb = draw_result(frame_rgb, boxes, data)

@@ -195,8 +195,8 @@ def draw_result(image, boxes, data, mode=False):
                     box_color = [230, 100, 100]
                     box_thick = 10
                     break
-            for car_person in data.no_comity_pedestrian_cars_people:
-                if car_person[0] == box[5]:
+            for car_person in data.no_comity_pedestrian_cars_number:
+                if car_person == box[5]:
                     box_color = [0, 0, 255]
                     box_thick = 10
                     break
@@ -295,3 +295,23 @@ def init_deep_sort():
                                                        conf.trackerConf.nn_budget)
     tracker = Tracker(metric)
     return encoder, tracker
+
+
+# 计算斜率
+def get_slope(point1, point2):
+    point_1 = point1
+    point_2 = point2
+    if point_1[0] == point_2[0]:
+        point_1 = [point_1[0] + 1, point_1[1]]
+    return (point_2[1] - point_1[1]) / (point_2[0] - point_1[0])
+
+
+# 判断两条线段相交
+def judge_two_line_intersect(p1, p2, p3, p4):
+    flag1 = (p2[0] - p1[0]) * (p4[1] - p1[1]) - (p2[1] - p1[1]) * (p4[0] - p1[0])
+    flag2 = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])
+    flag3 = (p4[0] - p3[0]) * (p2[1] - p3[1]) - (p4[1] - p3[1]) * (p2[0] - p3[0])
+    flag4 = (p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])
+    if flag1 * flag2 < 0 and flag3 * flag4 < 0:
+        return True
+    return False
