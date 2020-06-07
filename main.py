@@ -54,12 +54,12 @@ def YOLO():
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
-        ret, frame_test = cap.read()
-
+        if frame_read is None:
+            exit(0)
         if data.init_flag:
             data.zebra_line = get_zebra_line(frame_read)
-            data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_test, data.zebra_line)
-        data.init_flag = False
+            data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_read, data.zebra_line)
+            data.init_flag = False
 
         frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb, (model.image_width, model.image_height), interpolation=cv2.INTER_LINEAR)
@@ -104,7 +104,7 @@ def YOLO():
         # draw_speed_info(frame_rgb, data.speeds, boxes)
 
         # 打印预测信息
-        print_info(boxes, time.time() - prev_time, data.class_names)
+        # print_info(boxes, time.time() - prev_time, data.class_names)
 
         # 显示图片
         out_win = "result"

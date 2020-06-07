@@ -49,8 +49,10 @@ def match_box(boxes, bbox, id):
     for box in boxes:
         temp.append(float(calculate_variance(box[3], box[4], (bbox[0], bbox[1]), (bbox[2], bbox[3]))))
     # 找出最小值
-    if min(temp) < 10:
+    if min(temp) < 1000:
         boxes[temp.index(min(temp))][5] = id
+    # else:
+    #     print(min(temp))
     # i = find_min(boxes, temp)
     # boxes[i][5] = id
     return boxes
@@ -110,6 +112,7 @@ def convert_output(detections):
         p1, p2 = convert_back(detection[2][0], detection[2][1], detection[2][2], detection[2][3])
         center = (int((p1[0] + p2[0]) / 2), int((p1[1] + p2[1]) / 2))
         boxes.append([detection[0], float(format(detection[1], '.2f')), center, p1, p2, -1, None])
+    boxes.sort()
     return boxes
 
 
@@ -252,12 +255,10 @@ def tracker_update(input_boxes, frame, encoder, tracker, track_label):
     更新tracker
     """
     tracker_boxes = []
-    count = 0
     for box in input_boxes:
         if box[0] in track_label:
             # continue
             # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
-            count += 1
             tracker_boxes.append([box[3][0], box[3][1], box[4][0] - box[3][0], box[4][1] - box[3][1], box[0], box[1]])
 
     if len(tracker_boxes) > 0:
@@ -276,14 +277,10 @@ def tracker_update(input_boxes, frame, encoder, tracker, track_label):
         tracker.predict()
         tracker.update(detections)
 
-        i = 0
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
-            if i >= count:
-                continue
             bbox = track.to_tlbr()
-            i += 1
             input_boxes = match_box(input_boxes, bbox, int(track.track_id))
 
     return input_boxes
