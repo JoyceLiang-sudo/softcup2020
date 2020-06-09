@@ -116,7 +116,7 @@ def YOLO():
 
         # 检测车流量
         data.traffic_flow = get_traffic_flow(frame_rgb, traffic_flow, data.tracks, time.time())
-        print("车流量为：%d" % data.traffic_flow)
+        qt_thread.info("车流量为：%d" % data.traffic_flow)
 
         # 检测逆行车辆
         data.retrograde_cars_number = get_retrograde_cars(frame_rgb, data.lane_lines, data.tracks,
@@ -133,9 +133,10 @@ def YOLO():
         # print_info(boxes, time.time() - prev_time, data.class_names)
 
         # 显示图片
-        qt_thread.process_ready = True
+        frame_rgb = cv2.resize(frame_rgb, (1640, 950), interpolation=cv2.INTER_LINEAR)
         qt_thread.set_image(frame_rgb)
-        print_qt_info(boxes, time.time() - prev_time, data.class_names, qt_thread)
+        qt_thread.process_ready = True
+        # print_qt_info(boxes, time.time() - prev_time, data.class_names, qt_thread)
         while not qt_thread.process_ready:
             time.sleep(0.01)
         if not qt_thread.is_alive():
