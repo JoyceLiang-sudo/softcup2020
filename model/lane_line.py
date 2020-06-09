@@ -2,6 +2,7 @@ import matplotlib.image as mplimg
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+from model.util.point_util import *
 
 
 def roi_mask(img, vertices):
@@ -64,23 +65,6 @@ def resize_point(points):
         for _point in point:
             _point[0] = _point[0] * 2
             _point[1] = _point[1] * 2
-
-
-def get_intersection_point(line1, line2):
-    if line1[0][0] == line1[1][0]:
-        line1[0][0] = line1[0][0] + 1
-    if line2[0][0] == line2[1][0]:
-        line2[0][0] = line2[0][0] + 1
-    point = []
-    k1 = (line1[0][1] - line1[1][1]) / (line1[0][0] - line1[1][0])
-    b1 = line1[0][1] - k1 * line1[0][0]
-    k2 = (line2[0][1] - line2[1][1]) / (line2[0][0] - line2[1][0])
-    b2 = line2[0][1] - k2 * line2[0][0]
-    x = (b2 - b1) / (k1 - k2)
-    y = k1 * x + b1
-    point.append(int(x))
-    point.append(int(y))
-    return point
 
 
 def find_left_line(lane_lines):

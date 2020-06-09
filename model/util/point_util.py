@@ -303,7 +303,7 @@ def get_slope(point1, point2):
     point_2 = point2
     if point_1[0] == point_2[0]:
         point_1 = [point_1[0] + 1, point_1[1]]
-    return (point_2[1] - point_1[1]) / (point_2[0] - point_1[0])
+    return np.fabs((point_2[1] - point_1[1]) / (point_2[0] - point_1[0]))
 
 
 # 判断两条线段相交
@@ -315,3 +315,36 @@ def judge_two_line_intersect(p1, p2, p3, p4):
     if flag1 * flag2 < 0 and flag3 * flag4 < 0:
         return True
     return False
+
+
+def get_intersection_point(line1, line2):
+    """
+    解两条直线交点
+    """
+    if line1[0][0] == line1[1][0]:
+        line1[0][0] = line1[0][0] + 1
+    if line2[0][0] == line2[1][0]:
+        line2[0][0] = line2[0][0] + 1
+    point = []
+    k1 = (line1[0][1] - line1[1][1]) / (line1[0][0] - line1[1][0])
+    b1 = line1[0][1] - k1 * line1[0][0]
+    k2 = (line2[0][1] - line2[1][1]) / (line2[0][0] - line2[1][0])
+    b2 = line2[0][1] - k2 * line2[0][0]
+    x = (b2 - b1) / (k1 - k2)
+    y = k1 * x + b1
+    point.append(int(x))
+    point.append(int(y))
+    return point
+
+
+def judge_point_line_position(point, line):
+    """
+    判断点在线的相对位置，-1为左，0为线上，1为右
+    (line[0]为上点，line[1]为下点)
+    """
+    flag = (point[0] - line[1][0]) * (line[0][1] - line[1][1]) - (line[0][0] - line[1][0]) * (point[1] - line[1][1])
+    if flag == 0:
+        return 0
+    if flag < 0:
+        return -1
+    return 1
