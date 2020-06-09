@@ -1,6 +1,5 @@
-import numpy as np
-import cv2
 from model.lane_line import get_intersection_point
+from model.util.point_util import *
 
 
 class Comity_Pedestrian(object):
@@ -89,15 +88,6 @@ def get_another_lines(img, slope, long_line):
     return right_line, down_line
 
 
-# 计算斜率
-def get_slope(point1, point2):
-    point_1 = point1
-    point_2 = point2
-    if point_1[0] == point_2[0]:
-        point_1 = [point_1[0] + 1, point_1[1]]
-    return (point_2[1] - point_1[1]) / (point_2[0] - point_1[0])
-
-
 # 当车压过人的前沿轨迹时，找到对应车和人
 def find_car_pass(predict_people_lines, car_tracks, comity_pedestrian):
     car_pass_cars_people = []
@@ -115,17 +105,6 @@ def find_car_pass(predict_people_lines, car_tracks, comity_pedestrian):
                 break
         if flag:
             comity_pedestrian.car_pass_cars_people.append(car_pass_car_person)
-
-
-# 判断两条线段相交
-def judge_two_line_intersect(p1, p2, p3, p4):
-    flag1 = (p2[0] - p1[0]) * (p4[1] - p1[1]) - (p2[1] - p1[1]) * (p4[0] - p1[0])
-    flag2 = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])
-    flag3 = (p4[0] - p3[0]) * (p2[1] - p3[1]) - (p4[1] - p3[1]) * (p2[0] - p3[0])
-    flag4 = (p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])
-    if flag1 * flag2 < 0 and flag3 * flag4 < 0:
-        return True
-    return False
 
 
 # 当人走过车的行驶轨迹时，找到对应车和人
@@ -154,7 +133,7 @@ def get_result_cars_people(comity_pedestrian):
         for person_pass_car_person in comity_pedestrian.person_pass_cars_people:
             if car_pass_car_person[0] == person_pass_car_person[0] and car_pass_car_person[2] == person_pass_car_person[
                 2]:
-                result_cars_people.append(car_pass_car_person)
+                result_cars_people.append(car_pass_car_person[0])
 
     return result_cars_people
 

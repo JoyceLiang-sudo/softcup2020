@@ -49,8 +49,10 @@ def match_box(boxes, bbox, id):
     for box in boxes:
         temp.append(float(calculate_variance(box[3], box[4], (bbox[0], bbox[1]), (bbox[2], bbox[3]))))
     # 找出最小值
-    if min(temp) < 10:
+    if min(temp) < 1000:
         boxes[temp.index(min(temp))][5] = id
+    # else:
+    #     print(min(temp))
     # i = find_min(boxes, temp)
     # boxes[i][5] = id
     return boxes
@@ -110,6 +112,7 @@ def convert_output(detections):
         p1, p2 = convert_back(detection[2][0], detection[2][1], detection[2][2], detection[2][3])
         center = (int((p1[0] + p2[0]) / 2), int((p1[1] + p2[1]) / 2))
         boxes.append([detection[0], float(format(detection[1], '.2f')), center, p1, p2, -1, None])
+    boxes.sort()
     return boxes
 
 
@@ -207,8 +210,8 @@ def draw_result(image, boxes, data, mode=False):
                     box_color = [230, 100, 100]
                     box_thick = 10
                     break
-            for car_person in data.no_comity_pedestrian_cars_people:
-                if car_person[0] == box[5]:
+            for car_person in data.no_comity_pedestrian_cars_number:
+                if car_person == box[5]:
                     box_color = [0, 0, 255]
                     box_thick = 10
                     break
@@ -267,12 +270,10 @@ def tracker_update(input_boxes, frame, encoder, tracker, track_label):
     更新tracker
     """
     tracker_boxes = []
-    count = 0
     for box in input_boxes:
         if box[0] in track_label:
             # continue
             # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
-            count += 1
             tracker_boxes.append([box[3][0], box[3][1], box[4][0] - box[3][0], box[4][1] - box[3][1], box[0], box[1]])
 
     if len(tracker_boxes) > 0:
@@ -291,14 +292,10 @@ def tracker_update(input_boxes, frame, encoder, tracker, track_label):
         tracker.predict()
         tracker.update(detections)
 
-        i = 0
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
-            if i >= count:
-                continue
             bbox = track.to_tlbr()
-            i += 1
             input_boxes = match_box(input_boxes, bbox, int(track.track_id))
 
     return input_boxes
@@ -313,3 +310,56 @@ def init_deep_sort():
                                                        conf.trackerConf.nn_budget)
     tracker = Tracker(metric)
     return encoder, tracker
+
+
+# 计算斜率
+def get_slope(point1, point2):
+    point_1 = point1
+    point_2 = point2
+    if point_1[0] == point_2[0]:
+        point_1 = [point_1[0] + 1, point_1[1]]
+    return np.fabs((point_2[1] - point_1[1]) / (point_2[0] - point_1[0]))
+
+
+# 判断两条线段相交
+def judge_two_line_intersect(p1, p2, p3, p4):
+    flag1 = (p2[0] - p1[0]) * (p4[1] - p1[1]) - (p2[1] - p1[1]) * (p4[0] - p1[0])
+    flag2 = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])
+    flag3 = (p4[0] - p3[0]) * (p2[1] - p3[1]) - (p4[1] - p3[1]) * (p2[0] - p3[0])
+    flag4 = (p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])
+    if flag1 * flag2 < 0 and flag3 * flag4 < 0:
+        return True
+    return False
+
+
+def get_intersection_point(line1, line2):
+    """
+    解两条直线交点
+    """
+    if line1[0][0] == line1[1][0]:
+        line1[0][0] = line1[0][0] + 1
+    if line2[0][0] == line2[1][0]:
+        line2[0][0] = line2[0][0] + 1
+    point = []
+    k1 = (line1[0][1] - line1[1][1]) / (line1[0][0] - line1[1][0])
+    b1 = line1[0][1] - k1 * line1[0][0]
+    k2 = (line2[0][1] - line2[1][1]) / (line2[0][0] - line2[1][0])
+    b2 = line2[0][1] - k2 * line2[0][0]
+    x = (b2 - b1) / (k1 - k2)
+    y = k1 * x + b1
+    point.append(int(x))
+    point.append(int(y))
+    return point
+
+
+def judge_point_line_position(point, line):
+    """
+    判断点在线的相对位置，-1为左，0为线上，1为右
+    (line[0]为上点，line[1]为下点)
+    """
+    flag = (point[0] - line[1][0]) * (line[0][1] - line[1][1]) - (line[0][0] - line[1][0]) * (point[1] - line[1][1])
+    if flag == 0:
+        return 0
+    if flag < 0:
+        return -1
+    return 1
