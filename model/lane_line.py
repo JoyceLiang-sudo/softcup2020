@@ -37,12 +37,16 @@ def find_lines(lines):
 
 
 def extend_lines(img, zebra_crossing, lane_lines, points):
+    if zebra_crossing[0][1] == 0:
+        reference_line = [[0, int(img.shape[0] / 5 * 3)], [img.shape[1], int(img.shape[0] / 5 * 3)]]
+    else:
+        reference_line = zebra_crossing
     up_points = []
     bottom_points = []
     line_bottom = [[0, img.shape[0]], [img.shape[1], img.shape[0]]]
     line_left = [[0, 0], [1, img.shape[0]]]
     for line in lane_lines:
-        point = get_intersection_point(zebra_crossing, line)
+        point = get_intersection_point(reference_line, line)
         up_points.append(point)
         point = get_intersection_point(line_bottom, line)
         if point[0] < 0:
@@ -98,7 +102,11 @@ def deal_contours(img):
     return img
 
 
-def get_stop_line(zebra_width, zebra_crossing, left_line):
+def get_stop_line(img, zebra_width, zebra_crossing, lane_lines):
+    if len(lane_lines) <= 0:
+        left_line = [[0, 0], [0, img.shape[0]]]
+    else:
+        left_line = lane_lines[0]
     stop_line = [[zebra_crossing[0][0], int(zebra_crossing[0][1] * 2 + zebra_width * 0.7)],
                  [zebra_crossing[1][0], int(zebra_crossing[1][1] * 2 + zebra_width * 0.7)]]
     left_point = get_intersection_point(stop_line, left_line)
@@ -107,9 +115,9 @@ def get_stop_line(zebra_width, zebra_crossing, left_line):
 
 
 def deal_picture(img, zebra_crossing, points, zebra_width):
-    blur_ksize = 5
-    canny_lthreshold = 100
-    canny_hthreshold = 150
+    blur_k_size = 5
+    canny_l_threshold = 100
+    canny_h_threshold = 150
     rho = 1
     theta = np.pi / 180
     threshold = 15
@@ -119,15 +127,16 @@ def deal_picture(img, zebra_crossing, points, zebra_width):
     img = cv2.resize(img, (int(y / 2), int(x / 2)))
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     gray = deal_contours(gray)
-    blur_gray = cv2.GaussianBlur(gray, (blur_ksize, blur_ksize), 0, 0)
-    edges = cv2.Canny(blur_gray, canny_lthreshold, canny_hthreshold)
+    blur_gray = cv2.GaussianBlur(gray, (blur_k_size, blur_k_size), 0, 0)
+    edges = cv2.Canny(blur_gray, canny_l_threshold, canny_h_threshold)
     roi_vtx = np.array([[(0, img.shape[0]), (20, 325), (img.shape[1] - 50, 325), (img.shape[1], img.shape[0])]])
     roi_edges = roi_mask(edges, roi_vtx)
     lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing
                              , points)
     # 车道线排序
     lane_lines.sort()
-    stop_line = get_stop_line(zebra_width, zebra_crossing, lane_lines[0])
+
+    stop_line = get_stop_line(img, zebra_width, zebra_crossing, lane_lines)
     return lane_lines, stop_line
 
 

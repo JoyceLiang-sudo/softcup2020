@@ -81,6 +81,8 @@ def get_retrograde_cars(img, lane_lines, tracks, numbers):
     """
     得到逆行车辆
     """
+    if len(lane_lines) <= 0:
+        return 0
     range_lines = make_range_lines(img, lane_lines)
     for line in range_lines:
         cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), [255, 200, 200], 5)

@@ -18,6 +18,9 @@ import cv2
 
 
 class Data:
+    # def __init__(self):
+    #     self.lane_lines = [[[0, 0], [100, 100]]]  # 车道线
+
     tracks = []  # 对应追踪编号的轨迹
     illegal_boxes_number = []  # 违规变道车的追踪编号
     lane_lines = []  # 车道线
