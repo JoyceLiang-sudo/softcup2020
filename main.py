@@ -97,10 +97,11 @@ def YOLO():
         boxes = get_license_plate(boxes, frame_rgb, model.plate_model)
 
         # 检测礼让行人
-        data.no_comity_pedestrian_cars_people = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
+        data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
 
         #检测闯红灯
-        data.true_running_car, data.running_car = judge_running_car(data.running_car, boxes, data.tracks, data.stop_line, data.lane_lines)
+        if boxes:
+            data.true_running_car, data.running_car = judge_running_car(data.running_car, boxes, data.tracks, data.stop_line, data.lane_lines)
 
         # 检测违规变道
         judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines, data.illegal_boxes_number)
