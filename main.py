@@ -18,20 +18,18 @@ import cv2
 
 
 class Data:
-    # def __init__(self):
-    #     self.lane_lines = [[[0, 0], [100, 100]]]  # 车道线
-
     tracks = []  # 对应追踪编号的轨迹
     illegal_boxes_number = []  # 违规变道车的追踪编号
     lane_lines = []  # 车道线
     stop_line = []  # 停车线
+    lanes = []  # 车道
     zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
     speeds = []  # 速度信息
     traffic_flow = 0
     init_flag = True  # 首次运行标志位
     retrograde_cars_number = []  # 逆行车号
     no_comity_pedestrian_cars_number = []  # 不礼让行人的车号
-    true_running_car = []# 闯红灯车辆的追踪编号
+    true_running_car = []  # 闯红灯车辆的追踪编号
     running_car = []
     origin = []
     class_names = get_names(conf.names_path)  # 标签名称
@@ -70,6 +68,7 @@ def YOLO():
         if data.init_flag:
             data.zebra_line = get_zebra_line(frame_read)
             data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_read, data.zebra_line)
+            data.lanes = lane_line.get_lanes(frame_read, data.lane_lines)
             traffic_flow.pre_time = time.time()
             data.init_flag = False
 
@@ -107,7 +106,8 @@ def YOLO():
 
         # 检测闯红灯
         if boxes:
-            data.running_car, data.true_running_car = judge_running_car(frame_read, data.origin,data.running_car, boxes, data.tracks,
+            data.running_car, data.true_running_car = judge_running_car(frame_read, data.origin, data.running_car,
+                                                                        boxes, data.tracks,
                                                                         data.stop_line, data.lane_lines)
 
         # 检测违规变道

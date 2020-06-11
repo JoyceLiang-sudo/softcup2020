@@ -152,3 +152,49 @@ def get_lane_lines(img, zebra_line):
 
 def cal_distance(x1, y1, x2, y2):
     return np.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+
+
+def make_lines_group(lane_lines):
+    """
+    把所有车道线分组
+    """
+    lines_group = []
+    for line1 in lane_lines:
+        flag = True
+        lines = []
+        for line_group in lines_group:
+            for line_group1 in line_group:
+                if line1[0][0] == line_group1[0][0]:
+                    flag = False
+                    break
+            if not flag:
+                break
+        if not flag:
+            continue
+        for line2 in lane_lines:
+            if np.fabs(line1[0][0] - line2[0][0]) < 200:
+                lines.append(line2)
+        lines_group.append(lines)
+    return lines_group
+
+
+def make_lanes(lines_group):
+    """
+    组成车道
+    """
+    lanes = []
+    for lines in lines_group:
+        left_line = lines[0]
+        right_line = lines[-1]
+        lanes.append([left_line, right_line])
+    return lanes
+
+
+def get_lanes(img, lane_lines):
+    """
+    得到车道（每个元素包含左线，右线）
+    """
+    if len(lane_lines) > 0:
+        lines_group = make_lines_group(lane_lines)
+        lanes = make_lanes(lines_group)
+        return lanes
