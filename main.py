@@ -31,8 +31,9 @@ class Data:
     init_flag = True  # 首次运行标志位
     retrograde_cars_number = []  # 逆行车号
     no_comity_pedestrian_cars_number = []  # 不礼让行人的车号
-    true_running_car = []  # 闯红灯车辆的追踪编号
+    true_running_car = []# 闯红灯车辆的追踪编号
     running_car = []
+    origin = []
     class_names = get_names(conf.names_path)  # 标签名称
     colors = get_colors(class_names)  # 每个标签对应的颜色
 
@@ -106,7 +107,7 @@ def YOLO():
 
         # 检测闯红灯
         if boxes:
-            data.true_running_car, data.running_car = judge_running_car(data.running_car, boxes, data.tracks,
+            data.running_car, data.true_running_car = judge_running_car(frame_read, data.origin,data.running_car, boxes, data.tracks,
                                                                         data.stop_line, data.lane_lines)
 
         # 检测违规变道
