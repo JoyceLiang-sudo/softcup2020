@@ -84,8 +84,8 @@ def get_retrograde_cars(img, lane_lines, tracks, numbers):
     if len(lane_lines) <= 0:
         return 0
     range_lines = make_range_lines(img, lane_lines)
-    for line in range_lines:
-        cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), [255, 200, 200], 5)
+    # for line in range_lines:
+    #     cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), [255, 200, 200], 5)
     line_slope = get_slope(lane_lines[0][0], lane_lines[0][1])
     retrograde_numbers = get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines)
     real_numbers = get_real_numbers(numbers, retrograde_numbers)

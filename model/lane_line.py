@@ -116,7 +116,7 @@ def get_stop_line(img, zebra_width, zebra_crossing, lane_lines):
 
 def deal_picture(img, zebra_crossing, points, zebra_width):
     blur_k_size = 5
-    canny_l_threshold = 100
+    canny_l_threshold = 80
     canny_h_threshold = 150
     rho = 1
     theta = np.pi / 180
@@ -178,14 +178,25 @@ def make_lines_group(lane_lines):
     return lines_group
 
 
-def make_lanes(lines_group):
+def make_lanes(img, lines_group):
     """
     组成车道
     """
     lanes = []
+    if len(lines_group) == 1:
+        lanes.append([[lines_group[0][-1]], [[img.shape[1], 0], [img.shape[1], img.shape[0]]]])
+        return lanes
+    left_line = lines_group[0][0]
+    flag = False
     for lines in lines_group:
+        if not flag:
+            flag = True
+            continue
+        right_line = lines[0]
+        lanes.append([left_line, right_line])
         left_line = lines[0]
-        right_line = lines[-1]
+    if img.shape[1] - right_line[1][0] > 300:
+        right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
         lanes.append([left_line, right_line])
     return lanes
 
@@ -196,5 +207,5 @@ def get_lanes(img, lane_lines):
     """
     if len(lane_lines) > 0:
         lines_group = make_lines_group(lane_lines)
-        lanes = make_lanes(lines_group)
+        lanes = make_lanes(img, lines_group)
         return lanes
