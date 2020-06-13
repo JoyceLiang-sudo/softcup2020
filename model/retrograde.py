@@ -65,7 +65,6 @@ def get_real_numbers(numbers, retrograde_numbers):
     """
     去除重复编号，返回真实编号集
     """
-    real_numbers = []
     for number in retrograde_numbers:
         flag = True
         for _number in numbers:

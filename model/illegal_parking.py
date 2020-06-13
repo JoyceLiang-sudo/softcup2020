@@ -3,7 +3,7 @@ from model.util.point_util import *
 from model.lane_line import deal_contours, roi_mask
 
 
-def get_possible_area(img, lanes):
+def get_possible_area(lanes):
     """
     得到疑似区域
     """
@@ -100,23 +100,24 @@ def judge_illegal_area(img, lanes, stop_line):
     threshold = 15
     min_line_length = 70
     max_line_gap = 20
-    possible_area = get_possible_area(img, lanes)
+    possible_area = get_possible_area(lanes)
     points = get_roi_points(img, possible_area, stop_line)
     roi_mat = get_roi_mat(img, points)
     lines, line_img = hough_lines(roi_mat, rho, theta, threshold, min_line_length, max_line_gap)
     flag = get_judge_result(lines)
+    real_area = [possible_area, stop_line]
     # for line in lines:
     #     cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), [0, 0, 255], 4)
     # out_win = "test"
     # cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
     # # frame_rgb = cv2.cvtColor(roi_edges, cv2.COLOR_BGR2RGB)
     # cv2.imshow(out_win, roi_mat)
-    return flag, possible_area
+    return flag, real_area
 
 
-def find_illegal_area(img, lanes, tracks, stop_line):
+def find_illegal_area(img, lanes, stop_line):
     """
-    找出违停区域
+    找出违停区域(容量为2,下标为0的为左右两条线集合，下标为1的为停车线)
     """
     flag, possible_area = judge_illegal_area(img, lanes, stop_line)
     if flag:
@@ -124,3 +125,62 @@ def find_illegal_area(img, lanes, tracks, stop_line):
     else:
         illegal_area = []
     return illegal_area
+
+
+def judge_car_parking(track):
+    """
+    判断车是否停下
+    """
+    count = 0
+    for t in track:
+        if count < 2:
+            count = count + 1
+            continue
+
+
+def find_illegal_area_cars(illegal_area, tracks):
+    """
+    找出在违停区域的车
+    """
+    if len(illegal_area) <= 0:
+        return []
+    illegal_numbers = []
+    for track in tracks:
+        if track[1] != 2:
+            continue
+        if len(track) < 7:
+            continue
+        if judge_point_line_position(track[-1], illegal_area[0][0]) != 1:
+            continue
+        if judge_point_line_position(track[-1], illegal_area[0][1]) != -1:
+            continue
+        if track[-1][1] <= illegal_area[1][0][1]:
+            continue
+        if calculate_average_deviation([track[-1], track[-2], track[-3], track[-4], track[-5]]) > 50:
+            continue
+        illegal_numbers.append(track[0])
+    return illegal_numbers
+
+
+def find_now_numbers(numbers, illegal_cars):
+    """
+    和类成员合并，取消相同项
+    """
+    for number1 in illegal_cars:
+        flag = True
+        for number2 in numbers:
+            if number1 == number2:
+                flag = False
+                break
+        if flag:
+            numbers.append(number1)
+    return numbers
+
+
+def find_illegal_parking_cars(illegal_area, tracks, numbers):
+    """
+    找出在违停区域停车的车
+    """
+    illegal_cars = find_illegal_area_cars(illegal_area, tracks)
+    now_numbers = find_now_numbers(numbers, illegal_cars)
+    return now_numbers

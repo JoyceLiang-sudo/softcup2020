@@ -20,6 +20,47 @@ def calculate_variance(p1, p2, p3, p4):
     return pow(p1[0] - p3[0], 2) + pow(p1[1] - p3[1], 2) + pow(p2[0] - p4[0], 2) + pow(p2[1] - p4[1], 2)
 
 
+def calculate_average(points):
+    """
+    算平均距离
+    """
+    if len(points) <= 1:
+        return 0
+    pre_point = points[0]
+    average = 0
+    flag = False
+    for point in points:
+        if not flag:
+            flag = True
+            continue
+        now_point = point
+        average = average + calculate_distance(pre_point, now_point)
+        pre_point = point
+    average = average / (len(points) - 1)
+    return average
+
+
+def calculate_average_deviation(points):
+    """
+    计算平均差
+    """
+    if len(points) <= 1:
+        return 0
+    average = calculate_average(points)
+    average_deviation = 0
+    pre_point = points[0]
+    flag = False
+    for point in points:
+        if not flag:
+            flag = True
+            continue
+        now_point = point
+        average_deviation = average_deviation + np.fabs(calculate_distance(pre_point, now_point) - average)
+        pre_point = point
+    average_deviation = average_deviation / (len(points) - 1)
+    return average_deviation
+
+
 def calculate_distance(p1, p2):
     """
     计算两个点的距离

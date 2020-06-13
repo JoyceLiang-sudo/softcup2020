@@ -14,7 +14,7 @@ from model.comity_pedestrian import judge_comity_pedestrian, Comity_Pedestrian
 from model.traffic_flow import get_traffic_flow, Traffic_Flow
 from model.retrograde import get_retrograde_cars
 from model.running_red_lights import judge_running_car
-from model.illegal_parking import find_illegal_area
+from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
 import cv2
 
 
@@ -25,7 +25,7 @@ class Data:
     stop_line = []  # 停车线
     lanes = []  # 车道
     illegal_area = []  # 违停区域
-    illegal_parking_number = []  # 违停车辆
+    illegal_parking_numbers = []  # 违停车辆编号
     zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
     speeds = []  # 速度信息
     traffic_flow = 0  # 车流量
@@ -72,7 +72,7 @@ def YOLO():
             data.zebra_line = get_zebra_line(frame_read)
             data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_read, data.zebra_line)
             data.lanes = lane_line.get_lanes(frame_read, data.lane_lines)
-            data.illegal_area = find_illegal_area(frame_read, data.lanes, data.tracks, data.stop_line)
+            data.illegal_area = find_illegal_area(frame_read, data.lanes, data.stop_line)
             traffic_flow.pre_time = time.time()
             data.init_flag = False
 
@@ -124,6 +124,10 @@ def YOLO():
         # 检测逆行车辆
         data.retrograde_cars_number = get_retrograde_cars(frame_rgb, data.lane_lines, data.tracks,
                                                           data.retrograde_cars_number)
+        # 检测违规停车
+        data.illegal_parking_numbers = find_illegal_parking_cars(data.illegal_area,
+                                                                 data.tracks,
+                                                                 data.illegal_parking_numbers)
 
         # 画出预测结果
         frame_rgb = draw_result(frame_rgb, boxes, data)
