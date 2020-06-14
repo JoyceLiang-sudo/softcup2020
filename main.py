@@ -92,11 +92,11 @@ def YOLO():
         # 更新tracker
         boxes = tracker_update(boxes, frame_resized, model.encoder, model.tracker, conf.trackerConf.track_label)
 
-        # 红绿灯的颜色放在box最后面
-        boxes = traffic_light(boxes, frame_rgb)
-
         # 把识别框映射为输入图片大小
         boxes = cast_origin(boxes, model.image_width, model.image_height, frame_rgb.shape)
+
+        # 红绿灯的颜色放在box最后面
+        boxes = traffic_light(boxes, frame_read)
 
         # 制作轨迹
         make_track(boxes, data.tracks)
@@ -110,11 +110,11 @@ def YOLO():
         # 检测礼让行人
         data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
 
-        # 检测闯红灯
-        # if boxes:
-        #     data.running_car, data.true_running_car = judge_running_car(frame_read, data.origin, data.running_car,
-        #                                                                 boxes, data.tracks,
-        #                                                                 data.stop_line, data.lane_lines)
+        #检测闯红灯
+        if boxes:
+             data.running_car, data.true_running_car = judge_running_car(frame_read, data.origin, data.running_car,
+                                                                         boxes, data.tracks,
+                                                                         data.stop_line, data.lane_lines)
 
         # 检测违规变道
         judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines, data.illegal_boxes_number)

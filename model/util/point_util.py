@@ -241,6 +241,11 @@ def draw_result(image, boxes, data, mode=False):
                     box_color = [0, 0, 255]
                     box_thick = 10
                     break
+            for car_light in data.true_running_car:
+                if car_light == box[5]:
+                    box_color = [0, 0, 255]
+                    box_thick = 10
+                    break
 
             # for i in data.true_running_car:
             #     if i == box[5]:

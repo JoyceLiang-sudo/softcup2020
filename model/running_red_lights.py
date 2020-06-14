@@ -29,8 +29,8 @@ def judge_running_car(frame_read, origin, running_car, boxes, tracks, stop_line,
                                             if not track[1] in running_car:
                                                 running_car.append(track[1])
                                 if intersect((stop_line[0][0], stop_line[0][1]), (stop_line[1][0], stop_line[1][1]),
-                                         track[-1],
-                                         track[-2]):
+                                             track[-1],
+                                             track[-2]):
                                     running_car.append(track[1])
 
                     if track[-1][1] < frame_read.shape[0]:

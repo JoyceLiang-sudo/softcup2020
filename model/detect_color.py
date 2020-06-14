@@ -3,37 +3,22 @@ import numpy as np
 
 
 def detect_color(image):
-    # image = cv2.imread(image_path)
-    # 准确率比上次提高了
-    # RGB
-    im_R = image[:, :, 0]
-    im_G = image[:, :, 1]
-    im_B = image[:, :, 2]
-
-    # 平均值
-    im_R_mean = np.mean(im_R)
-    im_G_mean = np.mean(im_G)
-    im_B_mean = np.mean(im_B)
-    color = max(im_R_mean, im_G_mean, im_B_mean)
-
     # BGR 转成 HSV
-    hsv_img = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # HSV色彩空间阈值
-    red_min = np.array([0, 43, 46])
-    red_max = np.array([8, 255, 255])
-    red_min2 = np.array([156, 43, 46])
+    red_min2 = np.array([0, 8, 177])
     red_max2 = np.array([180, 255, 255])
 
-    yello_min = np.array([15, 43, 46])
-    yello_max = np.array([34, 255, 255])
+    yellow_min = np.array([20, 43, 46])
+    yellow_max = np.array([30, 255, 255])
 
     green_min = np.array([35, 43, 46])
-    green_max = np.array([77, 255, 255])
+    green_max = np.array([90, 255, 255])
 
     # 利用cv2.inRange函数设阈值，去除背景部分
-    red_thresh = cv2.inRange(hsv_img, red_min, red_max) + cv2.inRange(hsv_img, red_min2, red_max2)
-    yellow_thresh = cv2.inRange(hsv_img, yello_min, yello_max)
+    red_thresh = cv2.inRange(hsv_img, red_min2, red_max2)
+    yellow_thresh = cv2.inRange(hsv_img, yellow_min, yellow_max)
     green_thresh = cv2.inRange(hsv_img, green_min, green_max)
 
     red_blur = cv2.medianBlur(red_thresh, 5)
@@ -46,12 +31,11 @@ def detect_color(image):
     green = cv2.countNonZero(green_blur)
 
     # 最大值
-    lightColor = max(red, yellow, green)
-    # print(lightColor)
+    lightColor = max(red, green, yellow)
 
-    if color == im_R_mean or lightColor == red:
+    if lightColor == red:
         return 1
-    elif color == im_G_mean or lightColor == green:
+    elif lightColor == green:
         return 2
     else:
         return 3
