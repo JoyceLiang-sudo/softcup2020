@@ -8,6 +8,14 @@ conf = edict()
 
 # 视频路径，为0则打开内置摄像头
 conf.video_path = "./data/video.avi"
+
+# 保存文件路径
+conf.save_path = "./save_img/"
+conf.save_path1 = "illegal_change_lane/"
+conf.save_path2 = "illegal_parking/"
+conf.save_path3 = "no_comity_pedestrian/"
+conf.save_path4 = "retrograde_cars/"
+conf.save_path5 = "running_red/"
 # conf.video_path = 0
 
 # yolo配置文件

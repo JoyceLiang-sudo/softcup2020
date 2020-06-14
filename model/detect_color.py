@@ -5,7 +5,7 @@ import numpy as np
 def detect_color(image):
     # image = cv2.imread(image_path)
     # 准确率比上次提高了
-    #RGB
+    # RGB
     im_R = image[:, :, 0]
     im_G = image[:, :, 1]
     im_B = image[:, :, 2]
@@ -36,7 +36,7 @@ def detect_color(image):
     yellow_thresh = cv2.inRange(hsv_img, yello_min, yello_max)
     green_thresh = cv2.inRange(hsv_img, green_min, green_max)
 
-    red_blur = cv2.medianBlur(red_thresh,5)
+    red_blur = cv2.medianBlur(red_thresh, 5)
     yellow_blur = cv2.medianBlur(yellow_thresh, 5)
     green_blur = cv2.medianBlur(green_thresh, 5)
 
@@ -73,6 +73,5 @@ def traffic_light(boxes, img):
                 box[6] = 'yellow'
             else:
                 box[6] = None
-
 
     return boxes

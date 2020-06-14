@@ -242,11 +242,11 @@ def draw_result(image, boxes, data, mode=False):
                     box_thick = 10
                     break
 
-            for i in data.true_running_car:
-                if i == box[5]:
-                    box_color = [230, 100, 100]
-                    box_thick = 10
-                    break
+            # for i in data.true_running_car:
+            #     if i == box[5]:
+            #         box_color = [230, 100, 100]
+            #         box_thick = 10
+            #         break
             cv2.rectangle(image, box[3], box[4], box_color, box_thick)
             # cv2.rectangle(image, box[3], box[4], box_color2, box_thick)
             predicted_class = data.class_names[box[0]]

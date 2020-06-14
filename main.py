@@ -15,6 +15,7 @@ from model.traffic_flow import get_traffic_flow, Traffic_Flow
 from model.retrograde import get_retrograde_cars
 from model.running_red_lights import judge_running_car
 from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
+from model.save_img import save_illegal_car, create_save_file
 import cv2
 
 
@@ -69,6 +70,7 @@ def YOLO():
         if frame_read is None:
             exit(0)
         if data.init_flag:
+            create_save_file()
             data.zebra_line = get_zebra_line(frame_read)
             data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_read, data.zebra_line)
             data.lanes = lane_line.get_lanes(frame_read, data.lane_lines)
@@ -109,10 +111,10 @@ def YOLO():
         data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
 
         # 检测闯红灯
-        if boxes:
-            data.running_car, data.true_running_car = judge_running_car(frame_read, data.origin, data.running_car,
-                                                                        boxes, data.tracks,
-                                                                        data.stop_line, data.lane_lines)
+        # if boxes:
+        #     data.running_car, data.true_running_car = judge_running_car(frame_read, data.origin, data.running_car,
+        #                                                                 boxes, data.tracks,
+        #                                                                 data.stop_line, data.lane_lines)
 
         # 检测违规变道
         judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines, data.illegal_boxes_number)
@@ -129,11 +131,15 @@ def YOLO():
                                                                  data.tracks,
                                                                  data.illegal_parking_numbers)
 
+        # 保存违规车辆图片
+        save_illegal_car(frame_rgb, data, boxes)
+
         # 画出预测结果
         frame_rgb = draw_result(frame_rgb, boxes, data)
         draw_zebra_line(frame_rgb, data.zebra_line)
         draw_lane_lines(frame_rgb, data.lane_lines)
         draw_stop_line(frame_rgb, data.stop_line)
+
         # draw_speed_info(frame_rgb, data.speeds, boxes)
 
         # 打印预测信息
