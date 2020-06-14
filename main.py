@@ -17,6 +17,8 @@ from model.traffic_flow import get_traffic_flow, Traffic_Flow
 from model.retrograde import get_retrograde_cars
 from model.running_red_lights import judge_running_car
 from model.util.thread import QTThread
+from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
+from model.save_img import save_illegal_car, create_save_file
 import cv2
 
 
@@ -25,14 +27,18 @@ class Data(object):
     illegal_boxes_number = []  # 违规变道车的追踪编号
     lane_lines = []  # 车道线
     stop_line = []  # 停车线
+    lanes = []  # 车道
+    illegal_area = []  # 违停区域
+    illegal_parking_numbers = []  # 违停车辆编号
     zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
     speeds = []  # 速度信息
-    traffic_flow = 0
+    traffic_flow = 0  # 车流量
     init_flag = True  # 首次运行标志位
     retrograde_cars_number = []  # 逆行车号
     no_comity_pedestrian_cars_number = []  # 不礼让行人的车号
     true_running_car = []  # 闯红灯车辆的追踪编号
     running_car = []
+    origin = []
     class_names = get_names(conf.names_path)  # 标签名称
     colors = get_colors(class_names)  # 每个标签对应的颜色
 
@@ -69,8 +75,11 @@ def YOLO():
         if frame_read is None:
             exit(0)
         if data.init_flag:
+            create_save_file()
             data.zebra_line = get_zebra_line(frame_read)
             data.lane_lines, data.stop_line = lane_line.get_lane_lines(frame_read, data.zebra_line)
+            data.lanes = lane_line.get_lanes(frame_read, data.lane_lines)
+            data.illegal_area = find_illegal_area(frame_read, data.lanes, data.stop_line)
             traffic_flow.pre_time = time.time()
             data.init_flag = False
 
@@ -107,9 +116,10 @@ def YOLO():
         data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
 
         # 检测闯红灯
-        if boxes:
-            data.true_running_car, data.running_car = judge_running_car(data.running_car, boxes, data.tracks,
-                                                                        data.stop_line, data.lane_lines)
+        # if boxes:
+        #     data.running_car, data.true_running_car = judge_running_car(frame_read, data.origin, data.running_car,
+        #                                                                 boxes, data.tracks,
+        #                                                                 data.stop_line, data.lane_lines)
 
         # 检测违规变道
         judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines, data.illegal_boxes_number)
@@ -121,12 +131,20 @@ def YOLO():
         # 检测逆行车辆
         data.retrograde_cars_number = get_retrograde_cars(frame_rgb, data.lane_lines, data.tracks,
                                                           data.retrograde_cars_number)
+        # 检测违规停车
+        data.illegal_parking_numbers = find_illegal_parking_cars(data.illegal_area,
+                                                                 data.tracks,
+                                                                 data.illegal_parking_numbers)
+
+        # 保存违规车辆图片
+        save_illegal_car(frame_rgb, data, boxes)
 
         # 画出预测结果
         frame_rgb = draw_result(frame_rgb, boxes, data)
         draw_zebra_line(frame_rgb, data.zebra_line)
         draw_lane_lines(frame_rgb, data.lane_lines)
         draw_stop_line(frame_rgb, data.stop_line)
+
         # draw_speed_info(frame_rgb, data.speeds, boxes)
 
         # 打印预测信息

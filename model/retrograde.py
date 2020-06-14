@@ -10,7 +10,7 @@ def make_range_lines(img, lane_lines):
     down_line = [[0, img.shape[0]], [img.shape[1], img.shape[0]]]
     point = get_intersection_point(lane_lines[0], up_line)
     left_line = [point, lane_lines[0][1]]
-    right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
+    right_line = [[int(img.shape[1] / 8 * 7), 0], [int(img.shape[1] / 8 * 7), img.shape[0]]]
     range_lines = [up_line, down_line, left_line, right_line]
     return range_lines
 
@@ -31,15 +31,16 @@ def judge_run_direction(line_slope, track, lane_lines):
     判断汽车行驶方向
     -1为下，0为停，1为上
     """
-    if len(track) < 7:
+    if len(track) < 12:
         return 0
     x_weight1, y_weight1 = cal_x_y_weight(line_slope, track[-5], lane_lines)
     x_weight2, y_weight2 = cal_x_y_weight(line_slope, track[-1], lane_lines)
+    x_weight3, y_weight3 = cal_x_y_weight(line_slope, track[-10], lane_lines)
     if np.fabs(x_weight1 - x_weight2) > np.fabs(y_weight1 - y_weight2):
         return 0
     if y_weight2 > y_weight1:
         return 1
-    if y_weight2 < y_weight1:
+    if y_weight2 < y_weight1 < y_weight3:
         return -1
     return 0
 
@@ -51,7 +52,8 @@ def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines):
             continue
         if track[-1][1] < range_lines[0][0][1]:
             continue
-
+        if track[-1][0] > range_lines[3][0][0]:
+            continue
         if judge_point_line_position(track[-1], range_lines[2]) >= 0:
             continue
         flag = judge_run_direction(line_slope, track, lane_lines)
@@ -65,7 +67,6 @@ def get_real_numbers(numbers, retrograde_numbers):
     """
     去除重复编号，返回真实编号集
     """
-    real_numbers = []
     for number in retrograde_numbers:
         flag = True
         for _number in numbers:
@@ -81,9 +82,11 @@ def get_retrograde_cars(img, lane_lines, tracks, numbers):
     """
     得到逆行车辆
     """
+    if len(lane_lines) <= 0:
+        return 0
     range_lines = make_range_lines(img, lane_lines)
-    for line in range_lines:
-        cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), [255, 200, 200], 5)
+    # for line in range_lines:
+    #     cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), [255, 200, 200], 5)
     line_slope = get_slope(lane_lines[0][0], lane_lines[0][1])
     retrograde_numbers = get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines)
     real_numbers = get_real_numbers(numbers, retrograde_numbers)
