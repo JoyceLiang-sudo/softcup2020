@@ -3,6 +3,7 @@
 .idea
 *.avi
 __pycache__
+save_img
 *.list
 *.cmd
 *.exe

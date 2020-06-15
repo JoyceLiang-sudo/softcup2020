@@ -7,7 +7,7 @@ import tensorflow as tf
 conf = edict()
 
 # 视频路径，为0则打开内置摄像头
-conf.video_path = "./data/video.avi"
+conf.video_path = "./data/video2.avi"
 
 # 保存文件路径
 conf.save_path = "./save_img/"

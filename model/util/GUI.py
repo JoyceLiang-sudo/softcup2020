@@ -9,8 +9,8 @@
 
 import sys
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QWidget, QApplication
+from PySide2 import QtCore, QtGui, QtWidgets
+from PySide2.QtWidgets import QWidget, QApplication
 
 
 class Ui_Form(QWidget):

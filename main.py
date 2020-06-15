@@ -4,7 +4,7 @@ import darknet
 import numpy as np
 import sys
 
-from PyQt5.QtWidgets import QApplication
+from PySide2.QtWidgets import QApplication
 from model.lane_line import draw_lane_lines, draw_stop_line
 from model.plate import LPR
 from model.car import get_license_plate, speed_measure, draw_speed_info
@@ -122,11 +122,12 @@ def YOLO():
         #                                                                 data.stop_line, data.lane_lines)
 
         # 检测违规变道
-        judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines, data.illegal_boxes_number)
+        data.illegal_boxes_number = judge_illegal_change_lanes(frame_rgb, boxes, data.lane_lines,
+                                                               data.illegal_boxes_number)
 
         # 检测车流量
         data.traffic_flow = get_traffic_flow(frame_rgb, traffic_flow, data.tracks, time.time())
-        qt_thread.info("车流量为：%d" % data.traffic_flow)
+        # qt_thread.info("车流量为：%d" % data.traffic_flow)
 
         # 检测逆行车辆
         data.retrograde_cars_number = get_retrograde_cars(frame_rgb, data.lane_lines, data.tracks,
@@ -153,8 +154,8 @@ def YOLO():
         # 显示图片
         frame_rgb = cv2.resize(frame_rgb, (1640, 950), interpolation=cv2.INTER_LINEAR)
         qt_thread.set_image(frame_rgb)
+        print_qt_info(data, boxes, time.time() - prev_time, data.class_names, qt_thread)
         qt_thread.process_ready = True
-        # print_qt_info(boxes, time.time() - prev_time, data.class_names, qt_thread)
         while not qt_thread.process_ready:
             time.sleep(0.01)
         if not qt_thread.is_alive():

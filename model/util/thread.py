@@ -5,7 +5,7 @@ import time
 
 from ..conf import conf
 from .GUI import Ui_Form
-from PyQt5 import QtGui
+from PySide2 import QtGui
 
 
 class QTThread(threading.Thread):

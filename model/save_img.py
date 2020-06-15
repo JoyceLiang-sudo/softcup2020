@@ -8,9 +8,8 @@ from model.conf import conf
 def save_in_file(img, box, file_name):
     roi_img = img[box[3][1]:box[4][1], box[3][0]:box[4][0]]
     frame_rgb = cv2.cvtColor(roi_img, cv2.COLOR_BGR2RGB)
-    form = "%Y-%m-%d-%H_%M_%S"
-    string_time = time.strftime(form, time.localtime(time.time()))
-    print(string_time)
+    string_time = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time()))
+    # print(string_time)
     cv2.imwrite(conf.save_path + file_name + "/" + string_time + ".jpg", frame_rgb)
 
 
