@@ -230,23 +230,7 @@ def print_one_illegal_boxes(one_illegal_boxes, qt_thread, illegal_name):
             qt_thread.warn('编号（' + str(box[5]) + '），车牌号（' + str(box[-1]) + '）\n')
 
 
-def print_qt_info(data, boxes, time, class_names, qt_thread):
-    # qt_thread.info('从图片中找到 {} 个物体'.format(len(boxes)))
-    # count = 0
-    # for box in boxes:
-    #     if box[5] != -1:
-    #         count += 1
-    #     # 打印车牌
-    #     # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-    #     #     qt_thread.info(box[6])
-    #     # 打印坐标物体坐标信息
-    #     # qt_thread.info(class_names[box[0]], (box[3][0], box[3][1]), (box[4][0], box[4][1]))
-    # qt_thread.info('成功追踪 {} 个物体'.format(count))
-    # qt_thread.info("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
-    string2 = '编号（'
-    string3 = '），车牌号（'
-    string4 = '）'
-    flag = False
+def print_qt_info(data, boxes, qt_thread):
     illegal_boxes = [find_one_illegal_boxes(data.retrograde_cars_number, boxes),
                      find_one_illegal_boxes(data.illegal_parking_numbers, boxes),
                      find_one_illegal_boxes(data.true_running_car, boxes),
@@ -459,3 +443,18 @@ def judge_point_line_position(point, line):
     if flag < 0:
         return -1
     return 1
+
+
+def find_real_numbers(pre_numbers, now_numbers):
+    """
+    和类成员合并，取消相同项
+    """
+    for number1 in now_numbers:
+        flag = True
+        for number2 in pre_numbers:
+            if number1 == number2:
+                flag = False
+                break
+        if flag:
+            pre_numbers.append(number1)
+    return pre_numbers

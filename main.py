@@ -113,7 +113,8 @@ def YOLO():
         boxes = get_license_plate(boxes, frame_rgb, model.plate_model)
 
         # 检测礼让行人
-        data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian)
+        data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, data.tracks, comity_pedestrian,
+                                                                        data.no_comity_pedestrian_cars_number)
 
         # 检测闯红灯
         if boxes:
@@ -153,8 +154,8 @@ def YOLO():
 
         # 显示图片
         frame_rgb = cv2.resize(frame_rgb, (1640, 950), interpolation=cv2.INTER_LINEAR)
-        qt_thread.set_image(frame_rgb)
-        print_qt_info(data, boxes, time.time() - prev_time, data.class_names, qt_thread)
+        # qt_thread.set_image(frame_rgb)
+        print_qt_info(data, boxes, qt_thread)
         qt_thread.process_ready = True
         while not qt_thread.process_ready:
             time.sleep(0.01)

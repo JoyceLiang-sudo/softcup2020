@@ -162,25 +162,10 @@ def find_illegal_area_cars(illegal_area, tracks):
     return illegal_numbers
 
 
-def find_now_numbers(numbers, illegal_cars):
-    """
-    和类成员合并，取消相同项
-    """
-    for number1 in illegal_cars:
-        flag = True
-        for number2 in numbers:
-            if number1 == number2:
-                flag = False
-                break
-        if flag:
-            numbers.append(number1)
-    return numbers
-
-
 def find_illegal_parking_cars(illegal_area, tracks, numbers):
     """
     找出在违停区域停车的车
     """
     illegal_cars = find_illegal_area_cars(illegal_area, tracks)
-    now_numbers = find_now_numbers(numbers, illegal_cars)
+    now_numbers = find_real_numbers(numbers, illegal_cars)
     return now_numbers
