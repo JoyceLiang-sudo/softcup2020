@@ -184,7 +184,6 @@ def cast_origin(boxes, origin_width, origin_height, shape):
         box[2] = (int(box[2][0] / origin_width * shape[1]), int(box[2][1] / origin_height * shape[0]))
         box[3] = (int(box[3][0] / origin_width * shape[1]), int(box[3][1] / origin_height * shape[0]))
         box[4] = (int(box[4][0] / origin_width * shape[1]), int(box[4][1] / origin_height * shape[0]))
-    return boxes
 
 
 def print_info(boxes, time, class_names):
@@ -219,45 +218,6 @@ def find_one_illegal_boxes(illegal_number, boxes):
                 possible_boxes.append(box)
                 break
     return possible_boxes
-
-
-def print_one_illegal_boxes(one_illegal_boxes, qt_thread, illegal_name):
-    if len(one_illegal_boxes) <= 0:
-        qt_thread.warn('无' + illegal_name + '车辆\n')
-    else:
-        qt_thread.warn(illegal_name + '车辆:\n')
-        for box in one_illegal_boxes:
-            qt_thread.warn('编号（' + str(box[5]) + '），车牌号（' + str(box[-1]) + '）\n')
-
-
-def print_qt_info(data, boxes, time, class_names, qt_thread):
-    # qt_thread.info('从图片中找到 {} 个物体'.format(len(boxes)))
-    # count = 0
-    # for box in boxes:
-    #     if box[5] != -1:
-    #         count += 1
-    #     # 打印车牌
-    #     # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-    #     #     qt_thread.info(box[6])
-    #     # 打印坐标物体坐标信息
-    #     # qt_thread.info(class_names[box[0]], (box[3][0], box[3][1]), (box[4][0], box[4][1]))
-    # qt_thread.info('成功追踪 {} 个物体'.format(count))
-    # qt_thread.info("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
-    string2 = '编号（'
-    string3 = '），车牌号（'
-    string4 = '）'
-    flag = False
-    illegal_boxes = [find_one_illegal_boxes(data.retrograde_cars_number, boxes),
-                     find_one_illegal_boxes(data.illegal_parking_numbers, boxes),
-                     find_one_illegal_boxes(data.true_running_car, boxes),
-                     find_one_illegal_boxes(data.illegal_boxes_number, boxes),
-                     find_one_illegal_boxes(data.no_comity_pedestrian_cars_number, boxes)]
-    print_one_illegal_boxes(illegal_boxes[0], qt_thread, '逆行')
-    print_one_illegal_boxes(illegal_boxes[1], qt_thread, '违停')
-    print_one_illegal_boxes(illegal_boxes[2], qt_thread, '闯红灯')
-    print_one_illegal_boxes(illegal_boxes[3], qt_thread, '违规变道')
-    print_one_illegal_boxes(illegal_boxes[4], qt_thread, '不礼让行人')
-    qt_thread.warn('--------------\n')
 
 
 def draw_result(image, boxes, data, mode=False):
@@ -329,7 +289,6 @@ def draw_result(image, boxes, data, mode=False):
             # 红绿灯
             if box[0] == 6 and box[6] is not None:
                 cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
-    return image
 
 
 def judge_illegal_change_lanes(img, boxes, lane_lines, illegal_boxes_number):
@@ -393,8 +352,6 @@ def tracker_update(input_boxes, frame, encoder, tracker, track_label):
                 continue
             bbox = track.to_tlbr()
             input_boxes = match_box(input_boxes, bbox, int(track.track_id))
-
-    return input_boxes
 
 
 def init_deep_sort():

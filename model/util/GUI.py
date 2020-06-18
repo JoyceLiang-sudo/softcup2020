@@ -5,12 +5,10 @@
 # Created by: PyQt5 UI code generator 5.13.0
 #
 # WARNING! All changes made in this file will be lost!
-
-
 import sys
 
 from PySide2 import QtCore, QtGui, QtWidgets
-from PySide2.QtWidgets import QWidget, QApplication
+from PySide2.QtWidgets import QWidget
 
 
 class Ui_Form(QWidget):
@@ -18,7 +16,6 @@ class Ui_Form(QWidget):
         super(Ui_Form, self).__init__()
         self.setupUi(self)
         self.retranslateUi(self)
-        self.close_flag = True
 
     def setupUi(self, Form):
         Form.setObjectName("Form")
@@ -82,9 +79,9 @@ class Ui_Form(QWidget):
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
+        Form.setWindowTitle(_translate("Form", "交通场景智能应用"))
         self.show_video.setText(_translate("Form", "展示检测结果"))
         self.label.setText(_translate("Form", "\t\t\t\t交通场景智能应用\t\t\t\t"))
 
     def closeEvent(self, event):
-        self.close_flag = False
+        sys.exit(-1)
