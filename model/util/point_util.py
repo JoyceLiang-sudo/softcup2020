@@ -416,3 +416,18 @@ def judge_point_line_position(point, line):
     if flag < 0:
         return -1
     return 1
+
+
+def find_real_numbers(pre_numbers, now_numbers):
+    """
+    和类成员合并，取消相同项
+    """
+    for number1 in now_numbers:
+        flag = True
+        for number2 in pre_numbers:
+            if number1 == number2:
+                flag = False
+                break
+        if flag:
+            pre_numbers.append(number1)
+    return pre_numbers

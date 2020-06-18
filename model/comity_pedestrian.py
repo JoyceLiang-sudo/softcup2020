@@ -138,7 +138,7 @@ def get_result_cars_people(comity_pedestrian):
     return result_cars_people
 
 
-def judge_comity_pedestrian(img, tracks, comity_pedestrian):
+def judge_comity_pedestrian(img, tracks, comity_pedestrian, numbers):
     # 解出行人前沿轨迹
     predict_people_lines, car_tracks, people_tracks = get_predict_people_lines(img, tracks)
     # 当车压过人的前沿轨迹时，找到对应车和人
@@ -147,5 +147,6 @@ def judge_comity_pedestrian(img, tracks, comity_pedestrian):
     find_people_pass(people_tracks, car_tracks, comity_pedestrian)
     # 得到最后结构
     result_cars_people = get_result_cars_people(comity_pedestrian)
-
+    # 取消重复项
+    result_cars_people = find_real_numbers(numbers, result_cars_people)
     return result_cars_people

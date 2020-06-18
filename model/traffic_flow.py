@@ -1,6 +1,4 @@
-from model.lane_line import *
 from model.util.point_util import *
-import cv2
 
 
 class Traffic_Flow:
@@ -23,10 +21,8 @@ def cal_traffic_count(img, reference_flow, tracks):
                 reference_flow[0][1]:
             if track[-1][1] < track[-2][1]:
                 to_up_flow = to_up_flow + 1
-                # cv2.circle(img, track[-1], 10, [255, 0, 0], -1)
             else:
                 to_down_flow = to_down_flow + 1
-                # cv2.circle(img, track[-1], 10, [0, 0, 255], -1)
     return to_up_flow, to_down_flow
 
 
