@@ -23,8 +23,6 @@ def get_license_plate(boxes, image, model, thresh=0.6):
                 box[6] = str(res[0][0])
                 # print(res[0][0], res[0][1])
 
-    return boxes
-
 
 def too_small(p1, p2, size=60000):
     """

@@ -197,12 +197,12 @@ class MainThread(QObject):
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds)
 
             # 车牌识别
-            # boxes = get_license_plate(boxes, frame_rgb, self.model.plate_model)
+            # get_license_plate(boxes, frame_rgb, self.model.plate_model)
 
             # 检测礼让行人
             self.data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, self.data.tracks,
-                                                                                 self.comity_pedestrian)
-            #
+                                                                                 self.comity_pedestrian,
+                                                                                 self.data.no_comity_pedestrian_cars_number)
             # # 检测闯红灯
             # if boxes:
             #     self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
