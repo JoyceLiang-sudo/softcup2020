@@ -4,19 +4,22 @@ import numpy as np
 from keras.models import *
 from keras.layers import *
 
-chars = [u"京", u"沪", u"津", u"渝", u"冀", u"晋", u"蒙", u"辽", u"吉", u"黑", u"苏", u"浙", u"皖", u"闽", u"赣", u"鲁", u"豫", u"鄂",
-         u"湘", u"粤", u"桂",
-         u"琼", u"川", u"贵", u"云", u"藏", u"陕", u"甘", u"青", u"宁", u"新", u"0", u"1", u"2", u"3", u"4", u"5", u"6", u"7",
-         u"8", u"9", u"A",
-         u"B", u"C", u"D", u"E", u"F", u"G", u"H", u"J", u"K", u"L", u"M", u"N", u"P", u"Q", u"R", u"S", u"T", u"U",
-         u"V", u"W", u"X",
-         u"Y", u"Z", u"港", u"学", u"使", u"警", u"澳", u"挂", u"军", u"北", u"南", u"广", u"沈", u"兰", u"成", u"济", u"海", u"民",
-         u"航", u"空"
-         ]
-
 
 class LPR:
     def __init__(self, model_detection, model_finemapping, model_seq_rec):
+        self.chars = [u"京", u"沪", u"津", u"渝", u"冀", u"晋", u"蒙", u"辽", u"吉", u"黑", u"苏", u"浙", u"皖", u"闽", u"赣", u"鲁",
+                      u"豫", u"鄂",
+                      u"湘", u"粤", u"桂",
+                      u"琼", u"川", u"贵", u"云", u"藏", u"陕", u"甘", u"青", u"宁", u"新", u"0", u"1", u"2", u"3", u"4", u"5",
+                      u"6", u"7",
+                      u"8", u"9", u"A",
+                      u"B", u"C", u"D", u"E", u"F", u"G", u"H", u"J", u"K", u"L", u"M", u"N", u"P", u"Q", u"R", u"S",
+                      u"T", u"U",
+                      u"V", u"W", u"X",
+                      u"Y", u"Z", u"港", u"学", u"使", u"警", u"澳", u"挂", u"军", u"北", u"南", u"广", u"沈", u"兰", u"成", u"济",
+                      u"海", u"民",
+                      u"航", u"空"
+                      ]
         self.watch_cascade = cv2.CascadeClassifier(model_detection)
         self.modelFineMapping = self.model_finemapping()
         self.modelFineMapping.load_weights(model_finemapping)
@@ -47,9 +50,6 @@ class LPR:
         return image[y:y + h, x:x + w]
 
     def detect_plate_rough(self, image_gray, resize_h=720, en_scale=1.08, top_bottom_padding_rate=0.05):
-        if top_bottom_padding_rate > 0.2:
-            print("error:top_bottom_padding_rate > 0.2:", top_bottom_padding_rate)
-            exit(1)
         height = image_gray.shape[0]
         padding = int(height * top_bottom_padding_rate)
         scale = image_gray.shape[1] / float(image_gray.shape[0])
@@ -68,22 +68,20 @@ class LPR:
             cropped_images.append([cropped, [x, y + padding, w, h]])
         return cropped_images
 
-    @staticmethod
-    def fast_decode(y_pred):
+    def fast_decode(self, y_pred):
         results = ""
         confidence = 0.0
-        table_pred = y_pred.reshape(-1, len(chars) + 1)
+        table_pred = y_pred.reshape(-1, len(self.chars) + 1)
         res = table_pred.argmax(axis=1)
         for i, one in enumerate(res):
-            if one < len(chars) and (i == 0 or (one != res[i - 1])):
-                results += chars[one]
+            if one < len(self.chars) and (i == 0 or (one != res[i - 1])):
+                results += self.chars[one]
                 confidence += table_pred[i][one]
         confidence /= len(results)
         return results, confidence
 
-    @staticmethod
-    def model_seq_rec(model_path):
-        width, height, n_len, n_class = 164, 48, 7, len(chars) + 1
+    def model_seq_rec(self, model_path):
+        width, height, n_len, n_class = 164, 48, 7, len(self.chars) + 1
         rnn_size = 256
         input_tensor = Input((164, 48, 3))
         x = input_tensor

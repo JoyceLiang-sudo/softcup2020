@@ -23,7 +23,7 @@ from model.retrograde import get_retrograde_cars
 from model.running_red_lights import judge_running_car
 from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
 from model.save_img import save_illegal_car, create_save_file
-from util.GUI import Ui_Form
+from model.util.GUI import Ui_Form
 
 
 class Data(object):
@@ -100,7 +100,6 @@ class MainThread(QObject):
         self.model = Model()
         self.comity_pedestrian = Comity_Pedestrian()
         self.traffic_flow = Traffic_Flow()
-        print("Starting the YOLO loop...")
         self.cap = cv2.VideoCapture(conf.video_path)
 
     def info(self, msg):
@@ -110,6 +109,7 @@ class MainThread(QObject):
         self.message_warn.emit(str(msg))
 
     def set_image(self, img):
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         self.show_image.emit(img)
 
     def print_message(self, boxes, time):
@@ -167,8 +167,7 @@ class MainThread(QObject):
                 self.traffic_flow.pre_time = time.time()
                 self.data.init_flag = False
 
-            frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
-            frame_resized = cv2.resize(frame_rgb, (self.model.image_width, self.model.image_height),
+            frame_resized = cv2.resize(frame_read, (self.model.image_width, self.model.image_height),
                                        interpolation=cv2.INTER_LINEAR)
 
             darknet.copy_image_from_bytes(self.model.darknet_image, frame_resized.tobytes())
@@ -185,7 +184,7 @@ class MainThread(QObject):
                            conf.trackerConf.track_label)
 
             # 把识别框映射为输入图片大小
-            cast_origin(boxes, self.model.image_width, self.model.image_height, frame_rgb.shape)
+            cast_origin(boxes, self.model.image_width, self.model.image_height, frame_read.shape)
 
             # 红绿灯的颜色放在box最后面
             # boxes = traffic_light(boxes, frame_rgb)
@@ -196,11 +195,11 @@ class MainThread(QObject):
             # 计算速度
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds)
 
-            # 车牌识别
+            # TODO: 车牌识别
             # get_license_plate(boxes, frame_rgb, self.model.plate_model)
 
             # 检测礼让行人
-            self.data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_rgb, self.data.tracks,
+            self.data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_read, self.data.tracks,
                                                                                  self.comity_pedestrian,
                                                                                  self.data.no_comity_pedestrian_cars_number)
             # # 检测闯红灯
@@ -212,14 +211,14 @@ class MainThread(QObject):
             #                                                                           self.data.lane_lines)
             #
             # 检测违规变道
-            self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_rgb, boxes, self.data.lane_lines,
+            self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_read, boxes, self.data.lane_lines,
                                                                         self.data.illegal_boxes_number)
 
             # 检测车流量
-            self.data.traffic_flow = get_traffic_flow(frame_rgb, self.traffic_flow, self.data.tracks, time.time())
+            self.data.traffic_flow = get_traffic_flow(frame_read, self.traffic_flow, self.data.tracks, time.time())
 
             # 检测逆行车辆
-            self.data.retrograde_cars_number = get_retrograde_cars(frame_rgb, self.data.lane_lines, self.data.tracks,
+            self.data.retrograde_cars_number = get_retrograde_cars(frame_read, self.data.lane_lines, self.data.tracks,
                                                                    self.data.retrograde_cars_number)
             # 检测违规停车
             self.data.illegal_parking_numbers = find_illegal_parking_cars(self.data.illegal_area,
@@ -227,21 +226,21 @@ class MainThread(QObject):
                                                                           self.data.illegal_parking_numbers)
 
             # 保存违规车辆图片
-            save_illegal_car(frame_rgb, self.data, boxes)
+            save_illegal_car(frame_read, self.data, boxes)
 
             # 画出预测结果
-            draw_result(frame_rgb, boxes, self.data)
-            draw_zebra_line(frame_rgb, self.data.zebra_line)
-            draw_lane_lines(frame_rgb, self.data.lane_lines)
-            draw_stop_line(frame_rgb, self.data.stop_line)
+            draw_result(frame_read, boxes, self.data)
+            draw_zebra_line(frame_read, self.data.zebra_line)
+            draw_lane_lines(frame_read, self.data.lane_lines)
+            draw_stop_line(frame_read, self.data.stop_line)
             # draw_speed_info(frame_rgb, self.data.speeds, boxes)
 
             # 打印预测信息
             self.print_message(boxes, time.time() - prev_time)
 
             # 显示图片
-            frame_rgb = cv2.resize(frame_rgb, (1640, 950), interpolation=cv2.INTER_LINEAR)
-            self.set_image(frame_rgb)
+            frame_read = cv2.resize(frame_read, (1640, 950), interpolation=cv2.INTER_LINEAR)
+            self.set_image(frame_read)
 
 
 if __name__ == "__main__":
