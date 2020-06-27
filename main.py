@@ -183,6 +183,9 @@ class MainThread(QObject):
             tracker_update(boxes, frame_resized, self.model.encoder, self.model.tracker,
                            conf.trackerConf.track_label)
 
+            # TODO: 车牌识别
+            get_license_plate(boxes, frame_resized, self.model.plate_model)
+
             # 把识别框映射为输入图片大小
             cast_origin(boxes, self.model.image_width, self.model.image_height, frame_read.shape)
 
@@ -194,9 +197,6 @@ class MainThread(QObject):
 
             # 计算速度
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds)
-
-            # TODO: 车牌识别
-            # get_license_plate(boxes, frame_rgb, self.model.plate_model)
 
             # 检测礼让行人
             self.data.no_comity_pedestrian_cars_number = judge_comity_pedestrian(frame_read, self.data.tracks,
