@@ -291,23 +291,20 @@ def draw_result(image, boxes, data, mode=False):
                 cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
 
 
-def judge_illegal_change_lanes(img, boxes, lane_lines, illegal_boxes_number):
+def judge_illegal_change_lanes(tracks, lane_lines, illegal_boxes_number):
     """
     判断违规变道
     """
     illegal_cars = []
-    for box in boxes:
+    for track in tracks:
+        if len(track) < 4:
+            continue
+        if track[0] != 2:
+            continue
         for line in lane_lines:
-            mid_point = [int((box[3][0] + box[4][0]) / 2), box[4][1]]
-            k1 = (line[0][1] - line[1][1]) / (line[0][0] - line[1][0])
-            if mid_point[0] == line[1][0]:
-                mid_point[0] = mid_point[0] + 1
-            k2 = (mid_point[1] - line[1][1]) / (mid_point[0] - line[1][0])
-            if abs(k1 - k2) < 0.05 and box[4][1] > line[0][1]:
-                if box[5] != -1:
-                    illegal_cars.append(box[5])
-                # cv2.line(img, (mid_point[0], mid_point[1]), (line[1][0], line[1][1]), [255, 0, 255], 4)
-                # return True
+            if judge_two_line_intersect(line[0], line[1], track[-1], track[-2]):
+                illegal_cars.append(track[1])
+                break
     for number1 in illegal_cars:
         flag = True
         for number2 in illegal_boxes_number:
@@ -431,3 +428,15 @@ def find_real_numbers(pre_numbers, now_numbers):
         if flag:
             pre_numbers.append(number1)
     return pre_numbers
+
+
+def judge_stop(track):
+    """
+    判断是否静止
+    :param track: 轨迹
+    :return: True-静止，False-运动
+    """
+    if len(track) >= 7:
+        if calculate_average_deviation([track[-1], track[-2], track[-3], track[-4], track[-5]]) > 5:
+            return False
+        return True

@@ -1,6 +1,7 @@
 from model.lane_line import get_intersection_point
 from model.util.point_util import *
 from model.lane_line import deal_contours, roi_mask
+import sys
 
 
 def get_possible_area(lanes):
@@ -17,7 +18,7 @@ def find_lines(lines):
     real_lines = []
     for line in lines:
         for x1, y1, x2, y2 in line:
-            slope = (y2 - y1) / (x2 - x1)
+            slope = (y2 - y1) / (x2 - x1 + sys.float_info.min)
             if 0.1 < slope < 2:
                 line_one = [[x1, y1], [x2, y2]]
                 real_lines.append(line_one)
@@ -156,7 +157,7 @@ def find_illegal_area_cars(illegal_area, tracks):
             continue
         if track[-1][1] <= illegal_area[1][0][1]:
             continue
-        if calculate_average_deviation([track[-1], track[-2], track[-3], track[-4], track[-5]]) > 50:
+        if calculate_average_deviation([track[-1], track[-2], track[-3], track[-4], track[-5]]) > 10:
             continue
         illegal_numbers.append(track[0])
     return illegal_numbers

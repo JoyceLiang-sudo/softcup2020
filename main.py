@@ -116,21 +116,6 @@ class MainThread(QObject):
         """
         向GUI打印识别信息
         """
-        # qt_thread.info('从图片中找到 {} 个物体'.format(len(boxes)))
-        # count = 0
-        # for box in boxes:
-        #     if box[5] != -1:
-        #         count += 1
-        #     # 打印车牌
-        #     # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-        #     #     qt_thread.info(box[6])
-        #     # 打印坐标物体坐标信息
-        #     # qt_thread.info(class_names[box[0]], (box[3][0], box[3][1]), (box[4][0], box[4][1]))
-        # qt_thread.info('成功追踪 {} 个物体'.format(count))
-        # qt_thread.info("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
-        string2 = '编号（'
-        string3 = '），车牌号（'
-        string4 = '）'
         flag = False
         illegal_boxes = [find_one_illegal_boxes(self.data.retrograde_cars_number, boxes),
                          find_one_illegal_boxes(self.data.illegal_parking_numbers, boxes),
@@ -183,14 +168,13 @@ class MainThread(QObject):
             tracker_update(boxes, frame_resized, self.model.encoder, self.model.tracker,
                            conf.trackerConf.track_label)
 
-            # TODO: 车牌识别
-            get_license_plate(boxes, frame_resized, self.model.plate_model)
-
             # 把识别框映射为输入图片大小
             cast_origin(boxes, self.model.image_width, self.model.image_height, frame_read.shape)
 
+            # TODO: 车牌识别
+            # get_license_plate(boxes, frame_resized, self.model.plate_model)
             # 红绿灯的颜色放在box最后面
-            # boxes = traffic_light(boxes, frame_rgb)
+            # boxes = traffic_light(boxes, frame_resized)
 
             # 制作轨迹
             make_track(boxes, self.data.tracks)
@@ -203,15 +187,15 @@ class MainThread(QObject):
                                                                                  self.comity_pedestrian,
                                                                                  self.data.no_comity_pedestrian_cars_number)
             # # 检测闯红灯
-            # if boxes:
-            #     self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
-            #                                                                           self.data.running_car,
-            #                                                                           boxes, self.data.tracks,
-            #                                                                           self.data.stop_line,
-            #                                                                           self.data.lane_lines)
-            #
+            if boxes:
+                self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
+                                                                                      self.data.running_car,
+                                                                                      boxes, self.data.tracks,
+                                                                                      self.data.stop_line,
+                                                                                      self.data.lane_lines)
+
             # 检测违规变道
-            self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_read, boxes, self.data.lane_lines,
+            self.data.illegal_boxes_number = judge_illegal_change_lanes(self.data.tracks, self.data.lane_lines,
                                                                         self.data.illegal_boxes_number)
 
             # 检测车流量
@@ -224,6 +208,11 @@ class MainThread(QObject):
             self.data.illegal_parking_numbers = find_illegal_parking_cars(self.data.illegal_area,
                                                                           self.data.tracks,
                                                                           self.data.illegal_parking_numbers)
+
+            # for track in self.data.tracks:
+            #     if track[1] != 200:
+            #         continue
+            #     cv2.line(frame_read, (0, 0), track[-1], [255, 0, 235], 4)
 
             # 保存违规车辆图片
             save_illegal_car(frame_read, self.data, boxes)
