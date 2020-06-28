@@ -7,12 +7,12 @@ import darknet
 import numpy as np
 import sys
 import cv2
-
+from multiprocessing import Process, Pipe
 from PySide2.QtCore import Signal, QObject, QThread
 from PySide2.QtWidgets import QApplication
 from model.lane_line import draw_lane_lines, draw_stop_line
 from model.plate import LPR
-from model.car import get_license_plate, speed_measure, draw_speed_info
+from model.car import get_license_plate, speed_measure, draw_speed_info, too_small
 from model.util.point_util import *
 from model.conf import conf
 from model.detect_color import traffic_light
@@ -58,8 +58,6 @@ class Model(object):
     image_width = darknet.network_width(netMain)
     image_height = darknet.network_height(netMain)
     darknet_image = darknet.make_image(image_width, image_height, 3)
-    # 车牌识别模型
-    plate_model = LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
 
 
 class MainWindow(Ui_Form):
@@ -88,6 +86,14 @@ class MainWindow(Ui_Form):
         self.show_video.setPixmap(QtGui.QPixmap.fromImage(img))
 
 
+def plate_process(pipe):
+    model = LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
+    while True:
+        img = pipe.recv()
+        res = model.recognize_plate(img)
+        pipe.send(res)
+
+
 class MainThread(QObject):
     message_info = Signal(str)
     message_warn = Signal(str)
@@ -101,6 +107,10 @@ class MainThread(QObject):
         self.comity_pedestrian = Comity_Pedestrian()
         self.traffic_flow = Traffic_Flow()
         self.cap = cv2.VideoCapture(conf.video_path)
+        parentPipe, childPipe = Pipe()
+        p = Process(target=plate_process, args=(childPipe,))
+        p.start()
+        self.pipe = parentPipe
 
     def info(self, msg):
         self.message_info.emit(str(msg))
@@ -118,20 +128,14 @@ class MainThread(QObject):
         """
         # qt_thread.info('从图片中找到 {} 个物体'.format(len(boxes)))
         # count = 0
-        # for box in boxes:
-        #     if box[5] != -1:
-        #         count += 1
-        #     # 打印车牌
-        #     # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-        #     #     qt_thread.info(box[6])
+        for box in boxes:
+            # 打印车牌
+            if (box[0] == 1 or box[0] == 2) and box[6] is not None:
+                self.info(box[6])
         #     # 打印坐标物体坐标信息
         #     # qt_thread.info(class_names[box[0]], (box[3][0], box[3][1]), (box[4][0], box[4][1]))
         # qt_thread.info('成功追踪 {} 个物体'.format(count))
         # qt_thread.info("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
-        string2 = '编号（'
-        string3 = '），车牌号（'
-        string4 = '）'
-        flag = False
         illegal_boxes = [find_one_illegal_boxes(self.data.retrograde_cars_number, boxes),
                          find_one_illegal_boxes(self.data.illegal_parking_numbers, boxes),
                          find_one_illegal_boxes(self.data.true_running_car, boxes),
@@ -151,6 +155,21 @@ class MainThread(QObject):
             self.warn(illegal_name + '车辆:\n')
             for box in one_illegal_boxes:
                 self.warn('编号（' + str(box[5]) + '），车牌号（' + str(box[-1]) + '）\n')
+
+    def get_license_plate(self, boxes, image):
+        """
+        获得车牌
+        """
+        for box in boxes:
+            if (box[0] == 1 or box[0] == 2) and too_small(box[3], box[4]):
+                # 截取ROI作为识别车牌的输入图片
+                roi = image[box[3][1]:box[4][1], box[3][0]:box[4][0]]
+                self.pipe.send(roi)
+                res = self.pipe.recv()
+                if len(res) > 0 and res[0][1] > 0.6:
+                    # print((box[4][0] - box[3][0]) * (box[4][1] - box[3][1]))
+                    box[6] = str(res[0][0])
+                    # print(res[0][0], res[0][1])
 
     def run(self):
         while True:
@@ -183,9 +202,6 @@ class MainThread(QObject):
             tracker_update(boxes, frame_resized, self.model.encoder, self.model.tracker,
                            conf.trackerConf.track_label)
 
-            # TODO: 车牌识别
-            get_license_plate(boxes, frame_resized, self.model.plate_model)
-
             # 把识别框映射为输入图片大小
             cast_origin(boxes, self.model.image_width, self.model.image_height, frame_read.shape)
 
@@ -194,6 +210,9 @@ class MainThread(QObject):
 
             # 制作轨迹
             make_track(boxes, self.data.tracks)
+
+            # 车牌识别
+            self.get_license_plate(boxes, frame_read)
 
             # 计算速度
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds)
