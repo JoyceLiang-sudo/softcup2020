@@ -12,15 +12,22 @@ def get_predict_people_lines(img, tracks):
     predict_people_lines = []
     car_tracks = []
     people_tracks = []
+    range_y_min = int(img.shape[0] / 4)
+    # cv2.line(img, (0, range_y_min), (1000, range_y_min), [255, 0, 239], 4)
     for track in tracks:
+        if len(track) < 7:
+            continue
+        if track[-1][1] < range_y_min:
+            continue
+        if calculate_distance(track[2], track[-1]) < 50:
+            continue
         if track[0] == 2:
             car_tracks.append(track)
             continue
-        if track[0] != 4:
-            continue
-        people_tracks.append(track)
-        predict_people_line = get_predict_people_line(img, track)
-        predict_people_lines.append(predict_people_line)
+        if track[0] == 4:
+            people_tracks.append(track)
+            predict_people_line = get_predict_people_line(img, track)
+            predict_people_lines.append(predict_people_line)
     return predict_people_lines, car_tracks, people_tracks
 
 
@@ -131,8 +138,8 @@ def get_result_cars_people(comity_pedestrian):
     result_cars_people = []
     for car_pass_car_person in comity_pedestrian.car_pass_cars_people:
         for person_pass_car_person in comity_pedestrian.person_pass_cars_people:
-            if car_pass_car_person[0] == person_pass_car_person[0] and car_pass_car_person[2] == person_pass_car_person[
-                2]:
+            if car_pass_car_person[0] == person_pass_car_person[0] and \
+                    car_pass_car_person[2] == person_pass_car_person[2]:
                 result_cars_people.append(car_pass_car_person[0])
 
     return result_cars_people
@@ -149,4 +156,10 @@ def judge_comity_pedestrian(img, tracks, comity_pedestrian, numbers):
     result_cars_people = get_result_cars_people(comity_pedestrian)
     # 取消重复项
     result_cars_people = find_real_numbers(numbers, result_cars_people)
+    for car_person in comity_pedestrian.car_pass_cars_people:
+        for person_car in comity_pedestrian.person_pass_cars_people:
+            if car_person[0] == person_car[0]:
+                cv2.line(img, car_person[1], car_person[3], [245, 0, 235], 3)
+                cv2.circle(img, car_person[1], 8, [255, 0, 255], 8)
+                cv2.circle(img, car_person[3], 8, [255, 0, 255], 8)
     return result_cars_people

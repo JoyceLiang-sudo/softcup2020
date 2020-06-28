@@ -222,15 +222,15 @@ class MainThread(QObject):
                                                                                  self.comity_pedestrian,
                                                                                  self.data.no_comity_pedestrian_cars_number)
             # # 检测闯红灯
-            # if boxes:
-            #     self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
-            #                                                                           self.data.running_car,
-            #                                                                           boxes, self.data.tracks,
-            #                                                                           self.data.stop_line,
-            #                                                                           self.data.lane_lines)
-            #
+            if boxes:
+                self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
+                                                                                      self.data.running_car,
+                                                                                      boxes, self.data.tracks,
+                                                                                      self.data.stop_line,
+                                                                                      self.data.lane_lines)
+
             # 检测违规变道
-            self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_read, boxes, self.data.lane_lines,
+            self.data.illegal_boxes_number = judge_illegal_change_lanes(self.data.tracks, self.data.lane_lines,
                                                                         self.data.illegal_boxes_number)
 
             # 检测车流量
