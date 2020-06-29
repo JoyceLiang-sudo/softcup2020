@@ -1,21 +1,20 @@
-import os
 import time
 
 from PySide2 import QtGui
 
-import darknet
-import numpy as np
 import sys
-import cv2
 from multiprocessing import Process, Pipe
 from PySide2.QtCore import Signal, QObject, QThread
 from PySide2.QtWidgets import QApplication
+
+from model import lane_line
+from model.darknet.process import darknet_process
+from model.deep_sort.process import deep_sort_process
 from model.lane_line import draw_lane_lines, draw_stop_line
-from model.plate import LPR
-from model.car import get_license_plate, speed_measure, draw_speed_info, too_small
+from model.plate import plate_process
+from model.car import speed_measure
 from model.util.point_util import *
 from model.conf import conf
-from model.detect_color import traffic_light
 from model.zebra import Zebra, get_zebra_line, draw_zebra_line
 from model.comity_pedestrian import judge_comity_pedestrian, Comity_Pedestrian
 from model.traffic_flow import get_traffic_flow, Traffic_Flow
@@ -47,19 +46,6 @@ class Data(object):
     colors = get_colors(class_names)  # 每个标签对应的颜色
 
 
-class Model(object):
-    def __init__(self):
-        # 追踪器模型
-        self.encoder, self.tracker = init_deep_sort()
-
-    # darknet 模型
-    netMain = darknet.load_net_custom(conf.cfg_path.encode("ascii"), conf.weight_path.encode("ascii"), 0, 1)
-    metaMain = darknet.load_meta(conf.radar_data_path.encode("ascii"))
-    image_width = darknet.network_width(netMain)
-    image_height = darknet.network_height(netMain)
-    darknet_image = darknet.make_image(image_width, image_height, 3)
-
-
 class MainWindow(Ui_Form):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -75,6 +61,10 @@ class MainWindow(Ui_Form):
         self.thread.started.connect(self.backend.run)
         self.thread.start()
 
+        # 等待检测线程跑完第一张图片再显示界面
+        while self.backend.first_process_flag:
+            time.sleep(0.1)
+
     def info(self, msg):
         self.show_message.append(msg)
 
@@ -86,14 +76,6 @@ class MainWindow(Ui_Form):
         self.show_video.setPixmap(QtGui.QPixmap.fromImage(img))
 
 
-def plate_process(pipe):
-    model = LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
-    while True:
-        img = pipe.recv()
-        res = model.recognize_plate(img)
-        pipe.send(res)
-
-
 class MainThread(QObject):
     message_info = Signal(str)
     message_warn = Signal(str)
@@ -103,14 +85,30 @@ class MainThread(QObject):
         super(MainThread, self).__init__()
         self.image = None
         self.data = Data()
-        self.model = Model()
         self.comity_pedestrian = Comity_Pedestrian()
         self.traffic_flow = Traffic_Flow()
         self.cap = cv2.VideoCapture(conf.video_path)
-        parentPipe, childPipe = Pipe()
-        p = Process(target=plate_process, args=(childPipe,))
-        p.start()
-        self.pipe = parentPipe
+        self.first_process_flag = True
+
+        # darknet进程
+        darknet_parent_pipe, darknet_child_pipe = Pipe()
+        yolo_process = Process(target=darknet_process, args=(darknet_child_pipe,))
+        yolo_process.start()
+        self.darknet_pipe = darknet_parent_pipe
+        self.darknet_image_width = self.darknet_pipe.recv()
+        self.darknet_image_height = self.darknet_pipe.recv()
+
+        # 车牌识别进程
+        plate_parent_pipe, plate_child_pipe = Pipe()
+        license_plate_process = Process(target=plate_process, args=(plate_child_pipe,))
+        license_plate_process.start()
+        self.plate_pipe = plate_parent_pipe
+
+        # 追踪器进程
+        tracker_parent_pipe, tracker_child_pipe = Pipe()
+        tracker_process = Process(target=deep_sort_process, args=(tracker_child_pipe,))
+        tracker_process.start()
+        self.tracker_pipe = tracker_parent_pipe
 
     def info(self, msg):
         self.message_info.emit(str(msg))
@@ -135,7 +133,7 @@ class MainThread(QObject):
         #     # 打印坐标物体坐标信息
         #     # qt_thread.info(class_names[box[0]], (box[3][0], box[3][1]), (box[4][0], box[4][1]))
         # qt_thread.info('成功追踪 {} 个物体'.format(count))
-        # qt_thread.info("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
+        self.info("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
         illegal_boxes = [find_one_illegal_boxes(self.data.retrograde_cars_number, boxes),
                          find_one_illegal_boxes(self.data.illegal_parking_numbers, boxes),
                          find_one_illegal_boxes(self.data.true_running_car, boxes),
@@ -164,19 +162,35 @@ class MainThread(QObject):
             if (box[0] == 1 or box[0] == 2) and too_small(box[3], box[4]):
                 # 截取ROI作为识别车牌的输入图片
                 roi = image[box[3][1]:box[4][1], box[3][0]:box[4][0]]
-                self.pipe.send(roi)
-                res = self.pipe.recv()
+                self.plate_pipe.send(roi)
+                res = self.plate_pipe.recv()
                 if len(res) > 0 and res[0][1] > 0.6:
                     # print((box[4][0] - box[3][0]) * (box[4][1] - box[3][1]))
                     box[6] = str(res[0][0])
                     # print(res[0][0], res[0][1])
+
+    def update_tracker(self, boxes, image):
+        """
+        更新追踪器
+        """
+        self.tracker_pipe.send([boxes, image])
+        res = self.tracker_pipe.recv()
+        return res
+
+    def detect_image(self, image):
+        """
+        darknet检测图片
+        """
+        self.darknet_pipe.send(image)
+        detections = self.darknet_pipe.recv()
+        return detections
 
     def run(self):
         while True:
             prev_time = time.time()
             ret, frame_read = self.cap.read()
             if frame_read is None:
-                exit(0)
+                break
             if self.data.init_flag:
                 create_save_file()
                 self.data.zebra_line = get_zebra_line(frame_read)
@@ -186,24 +200,20 @@ class MainThread(QObject):
                 self.traffic_flow.pre_time = time.time()
                 self.data.init_flag = False
 
-            frame_resized = cv2.resize(frame_read, (self.model.image_width, self.model.image_height),
+            frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
 
-            darknet.copy_image_from_bytes(self.model.darknet_image, frame_resized.tobytes())
-
-            # 类别编号  置信度 (x,y,w,h)
-            detections = darknet.detect_image(self.model.netMain, self.model.metaMain, self.model.darknet_image,
-                                              thresh=conf.thresh)
+            # 调用darknet线程检测图片
+            detections = self.detect_image(frame_resized)
 
             # 类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
             boxes = convert_output(detections)
 
             # 更新tracker
-            tracker_update(boxes, frame_resized, self.model.encoder, self.model.tracker,
-                           conf.trackerConf.track_label)
+            boxes = self.update_tracker(boxes, frame_resized)
 
             # 把识别框映射为输入图片大小
-            cast_origin(boxes, self.model.image_width, self.model.image_height, frame_read.shape)
+            cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
 
             # 红绿灯的颜色放在box最后面
             # boxes = traffic_light(boxes, frame_rgb)
@@ -260,6 +270,7 @@ class MainThread(QObject):
             # 显示图片
             frame_read = cv2.resize(frame_read, (1640, 950), interpolation=cv2.INTER_LINEAR)
             self.set_image(frame_read)
+            self.first_process_flag = False
 
 
 if __name__ == "__main__":

@@ -80,53 +80,11 @@ class METADATA(Structure):
                 ("names", POINTER(c_char_p))]
 
 
-# lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
-# lib = CDLL("libdarknet.so", RTLD_GLOBAL)
 hasGPU = True
 if os.name == "nt":
-    cwd = os.path.dirname(__file__)
-    os.environ['PATH'] = cwd + ';' + os.environ['PATH']
-    winGPUdll = os.path.join(cwd, "yolo_cpp_dll.dll")
-    winNoGPUdll = os.path.join(cwd, "yolo_cpp_dll_nogpu.dll")
-    envKeys = list()
-    for k, v in os.environ.items():
-        envKeys.append(k)
-    try:
-        try:
-            tmp = os.environ["FORCE_CPU"].lower()
-            if tmp in ["1", "true", "yes", "on"]:
-                raise ValueError("ForceCPU")
-            else:
-                print("Flag value '" + tmp + "' not forcing CPU mode")
-        except KeyError:
-            # We never set the flag
-            if 'CUDA_VISIBLE_DEVICES' in envKeys:
-                if int(os.environ['CUDA_VISIBLE_DEVICES']) < 0:
-                    raise ValueError("ForceCPU")
-            try:
-                global DARKNET_FORCE_CPU
-                if DARKNET_FORCE_CPU:
-                    raise ValueError("ForceCPU")
-            except NameError:
-                pass
-            # print(os.environ.keys())
-            # print("FORCE_CPU flag undefined, proceeding with GPU")
-        if not os.path.exists(winGPUdll):
-            raise ValueError("NoDLL")
-        lib = CDLL(winGPUdll, RTLD_GLOBAL)
-    except (KeyError, ValueError):
-        hasGPU = False
-        if os.path.exists(winNoGPUdll):
-            lib = CDLL(winNoGPUdll, RTLD_GLOBAL)
-            print("Notice: CPU-only mode")
-        else:
-            # Try the other way, in case no_gpu was
-            # compile but not renamed
-            lib = CDLL(winGPUdll, RTLD_GLOBAL)
-            print(
-                "Environment variables indicated a CPU run, but we didn't find `" + winNoGPUdll + "`. Trying a GPU run anyway.")
+    lib = CDLL("yolo_cpp_dll.dll", RTLD_GLOBAL)
 else:
-    lib = CDLL("./libdarknet.so", RTLD_GLOBAL)
+    lib = CDLL("libdarknet.so", RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
 lib.network_height.argtypes = [c_void_p]
@@ -259,13 +217,6 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45, debug=False):
 
 
 def detect_image(net, meta, im, thresh=.5, hier_thresh=.5, nms=.45, debug=False):
-    # import cv2
-    # custom_image_bgr = cv2.imread(image) # use: detect(,,imagePath,)
-    # custom_image = cv2.cvtColor(custom_image_bgr, cv2.COLOR_BGR2RGB)
-    # custom_image = cv2.resize(custom_image,(lib.network_width(net), lib.network_height(net)), interpolation = cv2.INTER_LINEAR)
-    # import scipy.misc
-    # custom_image = scipy.misc.imread(image)
-    # im, arr = array_to_image(custom_image)		# you should comment line below: free_image(im)
     num = c_int(0)
     if debug: print("Assigned num")
     pnum = pointer(num)
@@ -275,7 +226,6 @@ def detect_image(net, meta, im, thresh=.5, hier_thresh=.5, nms=.45, debug=False)
     # predict_image_letterbox(net, im)
     # letter_box = 1
     if debug: print("did prediction")
-    # dets = get_network_boxes(net, custom_image_bgr.shape[1], custom_image_bgr.shape[0], thresh, hier_thresh, None, 0, pnum, letter_box) # OpenCV
     dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, None, 0, pnum, letter_box)
     if debug: print("Got dets")
     num = pnum[0]

@@ -1,8 +1,10 @@
 # coding=utf-8
+
 import cv2
 import numpy as np
 from keras.models import *
 from keras.layers import *
+from model.conf import conf
 
 
 class LPR:
@@ -162,3 +164,14 @@ class LPR:
             res, confidence = self.recognize_one(image_rgb)
             res_set.append([res, confidence, rect_refine])
         return res_set
+
+
+def plate_process(pipe):
+    """
+    车牌识别进程
+    """
+    model = LPR(conf.plate_cascade, conf.plate_model12, conf.plate_ocr_plate_all_gru)
+    while True:
+        img = pipe.recv()
+        res = model.recognize_plate(img)
+        pipe.send(res)

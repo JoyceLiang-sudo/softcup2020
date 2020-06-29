@@ -82,6 +82,3 @@ class Ui_Form(QWidget):
         Form.setWindowTitle(_translate("Form", "交通场景智能应用"))
         self.show_video.setText(_translate("Form", "展示检测结果"))
         self.label.setText(_translate("Form", "\t\t\t\t交通场景智能应用\t\t\t\t"))
-
-    def closeEvent(self, event):
-        sys.exit(-1)
