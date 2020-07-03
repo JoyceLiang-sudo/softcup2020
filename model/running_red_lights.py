@@ -22,7 +22,7 @@ def judge_running_car(frame_read, origin, running_car, boxes, tracks, stop_line,
                                 if track[-1][1] > frame_read.shape[0]:
                                     running_car.remove(track[1])
                         else:
-                            if len(track) > 4:
+                            if len(track) > 5:
                                 for i in range(0, len(origin)):
                                     if track[1] == origin[i]:
                                         if track[-1] != track[-2]:

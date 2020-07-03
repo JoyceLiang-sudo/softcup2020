@@ -149,7 +149,7 @@ def find_illegal_area_cars(illegal_area, tracks):
     for track in tracks:
         if track[1] != 2:
             continue
-        if len(track) < 7:
+        if len(track) < 8:
             continue
         if judge_point_line_position(track[-1], illegal_area[0][0]) != 1:
             continue

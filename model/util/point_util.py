@@ -8,6 +8,10 @@ import numpy as np
 import cv2
 
 
+class TimeDifference:
+    pre_time = 0
+
+
 def calculate_variance(p1, p2, p3, p4):
     """
     计算两对坐标点的方差，省略开方和平均
@@ -150,11 +154,14 @@ def make_track(boxes, tracks):
         flag = 0
         for _track in tracks:
             if _track[1] == box[5]:
+                if _track[2] is None:
+                    if box[-1] is not None:
+                        _track[2] = box[-1]
                 _track.append(box[2])
                 flag = 1
                 break
         if flag == 0:
-            track = [box[0], box[5], box[2]]
+            track = [box[0], box[5], box[-1], box[2]]
             tracks.append(track)
 
 
@@ -187,20 +194,20 @@ def print_info(boxes, time, class_names):
     print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
 
 
-def find_one_illegal_boxes(illegal_number, boxes):
+def find_one_illegal_boxes(illegal_number, tracks):
     """
     找一种违规信息
-    :param illegal_number:
-    :param boxes:
-    :return:
+    :param tracks:轨迹
+    :param illegal_number:非法编号
+    :return:可疑轨迹
     """
-    possible_boxes = []
+    possible_tracks = []
     for number in illegal_number:
-        for box in boxes:
-            if box[5] == number:
-                possible_boxes.append(box)
+        for track in tracks:
+            if track[1] == number:
+                possible_tracks.append(track)
                 break
-    return possible_boxes
+    return possible_tracks
 
 
 def draw_result(image, boxes, data, mode=False):
@@ -259,7 +266,7 @@ def draw_result(image, boxes, data, mode=False):
                 for track in data.tracks:
                     if box[5] != track[1]:
                         continue
-                    i = 2
+                    i = 3
                     while i < len(track) - 1:
                         cv2.circle(image, track[i], 1, data.colors[box[0]], -1)
                         i = i + 1
@@ -280,7 +287,7 @@ def judge_illegal_change_lanes(tracks, lane_lines, illegal_boxes_number):
     """
     illegal_cars = []
     for track in tracks:
-        if len(track) < 4:
+        if len(track) < 5:
             continue
         if track[0] != 2:
             continue

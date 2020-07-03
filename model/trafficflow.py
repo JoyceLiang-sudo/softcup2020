@@ -1,7 +1,7 @@
 from model.util.point_util import *
 
 
-class Traffic_Flow:
+class TrafficFlow:
     to_up_flow = 0
     to_down_flow = 0
     result_flow = 0
@@ -15,7 +15,7 @@ def cal_traffic_count(img, reference_flow, tracks):
     for track in tracks:
         if track[0] != 2:
             continue
-        if len(track) < 4:
+        if len(track) < 5:
             continue
         if judge_two_line_intersect(reference_flow[0], reference_flow[1], track[-1], track[-2]) or track[-1][1] == \
                 reference_flow[0][1]:
@@ -50,8 +50,6 @@ def judge_time_up(time, traffic_flow_class):
 def get_traffic_flow(img, traffic_flow_class, tracks, time):
     # 预置参考线
     reference_line = [[0, int(img.shape[0] / 2)], [img.shape[1], int(img.shape[0] / 2)]]
-    # cv2.line(img, (reference_line[0][0], reference_line[0][1]), (reference_line[1][0], reference_line[1][1]),
-    #          [0, 255, 255], 1)
     # 判断是否到时间周期
     time_up_flag = judge_time_up(time, traffic_flow_class)
     # 计算当前帧的通过个数

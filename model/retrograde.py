@@ -31,7 +31,7 @@ def judge_run_direction(line_slope, track, lane_lines):
     判断汽车行驶方向
     -1为下，0为停，1为上
     """
-    if len(track) < 12:
+    if len(track) < 13:
         return 0
     x_weight1, y_weight1 = cal_x_y_weight(line_slope, track[-5], lane_lines)
     x_weight2, y_weight2 = cal_x_y_weight(line_slope, track[-1], lane_lines)
@@ -49,6 +49,8 @@ def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines):
     retrograde_numbers = []
     for track in tracks:
         if track[0] != 2:
+            continue
+        if len(track) < 4:
             continue
         if track[-1][1] < range_lines[0][0][1]:
             continue
@@ -85,8 +87,6 @@ def get_retrograde_cars(img, lane_lines, tracks, numbers):
     if len(lane_lines) <= 0:
         return 0
     range_lines = make_range_lines(img, lane_lines)
-    # for line in range_lines:
-    #     cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), [255, 200, 200], 5)
     line_slope = get_slope(lane_lines[0][0], lane_lines[0][1])
     retrograde_numbers = get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines)
     real_numbers = get_real_numbers(numbers, retrograde_numbers)

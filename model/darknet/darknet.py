@@ -28,7 +28,6 @@ Windows Python 2.7 version: https://github.com/AlexeyAB/darknet/blob/fc496d52bf2
 """
 # pylint: disable=R, W0401, W0614, W0703
 from ctypes import *
-import math
 import random
 import os
 
@@ -80,7 +79,6 @@ class METADATA(Structure):
                 ("names", POINTER(c_char_p))]
 
 
-hasGPU = True
 if os.name == "nt":
     lib = CDLL("yolo_cpp_dll.dll", RTLD_GLOBAL)
 else:
@@ -106,9 +104,8 @@ predict = lib.network_predict_ptr
 predict.argtypes = [c_void_p, POINTER(c_float)]
 predict.restype = POINTER(c_float)
 
-if hasGPU:
-    set_gpu = lib.cuda_set_device
-    set_gpu.argtypes = [c_int]
+set_gpu = lib.cuda_set_device
+set_gpu.argtypes = [c_int]
 
 init_cpu = lib.init_cpu
 
@@ -177,89 +174,27 @@ predict_image_letterbox.argtypes = [c_void_p, IMAGE]
 predict_image_letterbox.restype = POINTER(c_float)
 
 
-def array_to_image(arr):
-    import numpy as np
-    # need to return old values to avoid python freeing memory
-    arr = arr.transpose(2, 0, 1)
-    c = arr.shape[0]
-    h = arr.shape[1]
-    w = arr.shape[2]
-    arr = np.ascontiguousarray(arr.flat, dtype=np.float32) / 255.0
-    data = arr.ctypes.data_as(POINTER(c_float))
-    im = IMAGE(w, h, c, data)
-    return im, arr
-
-
-def classify(net, meta, im):
-    out = predict_image(net, im)
-    res = []
-    for i in range(meta.classes):
-        if altNames is None:
-            nameTag = meta.names[i]
-        else:
-            nameTag = altNames[i]
-        res.append((nameTag, out[i]))
-    res = sorted(res, key=lambda x: -x[1])
-    return res
-
-
-def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45, debug=False):
-    """
-    Performs the meat of the detection
-    """
-    # pylint: disable= C0321
-    im = load_image(image, 0, 0)
-    if debug: print("Loaded image")
-    ret = detect_image(net, meta, im, thresh, hier_thresh, nms, debug)
-    free_image(im)
-    if debug: print("freed image")
-    return ret
-
-
-def detect_image(net, meta, im, thresh=.5, hier_thresh=.5, nms=.45, debug=False):
+def detect_image(net, meta, im, thresh=.5, hier_thresh=.5, nms=.45):
     num = c_int(0)
-    if debug: print("Assigned num")
     pnum = pointer(num)
-    if debug: print("Assigned pnum")
     predict_image(net, im)
     letter_box = 0
     # predict_image_letterbox(net, im)
     # letter_box = 1
-    if debug: print("did prediction")
     dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, None, 0, pnum, letter_box)
-    if debug: print("Got dets")
     num = pnum[0]
-    if debug: print("got zeroth index of pnum")
     if nms:
         do_nms_sort(dets, num, meta.classes, nms)
-    if debug: print("did sort")
     res = []
-    if debug: print("about to range")
     for j in range(num):
-        if debug: print("Ranging on " + str(j) + " of " + str(num))
-        if debug: print("Classes: " + str(meta), meta.classes, meta.names)
         for i in range(meta.classes):
-            if debug: print("Class-ranging on " + str(i) + " of " + str(meta.classes) + "= " + str(dets[j].prob[i]))
             if dets[j].prob[i] > 0:
                 b = dets[j].bbox
-                if altNames is None:
-                    nameTag = meta.names[i]
-                else:
-                    nameTag = altNames[i]
-                if debug:
-                    print("Got bbox", b)
-                    print(nameTag)
-                    print(dets[j].prob[i])
-                    print((b.x, b.y, b.w, b.h))
+                # if altNames is None:
+                #     nameTag = meta.names[i]
+                # else:
+                #     nameTag = altNames[i]
                 res.append((i, dets[j].prob[i], (b.x, b.y, b.w, b.h)))
-    if debug: print("did range")
     res = sorted(res, key=lambda x: -x[1])
-    if debug: print("did sort")
     free_detections(dets, num)
-    if debug: print("freed detections")
     return res
-
-
-netMain = None
-metaMain = None
-altNames = None

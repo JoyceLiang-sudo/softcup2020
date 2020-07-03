@@ -16,7 +16,7 @@ def speed_measure(tracks, time, speeds):
     追踪编号 中点 速度
     """
     for track in tracks:
-        if len(track) > 3:
+        if len(track) > 4:
             now_speed = get_speed(track[-1], track[-2], time)  # 这一帧的速度
             add_flag = False
             # 遍历速度列表
