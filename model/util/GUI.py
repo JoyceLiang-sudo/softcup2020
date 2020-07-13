@@ -9,7 +9,7 @@
 
 
 from PySide2 import QtCore, QtGui, QtWidgets
-from PySide2.QtGui import QPixmap, QIcon
+from PySide2.QtGui import QPixmap, QIcon, QColor
 from PySide2.QtWidgets import QWidget
 
 
@@ -23,6 +23,10 @@ class Ui_Form(QWidget):
         Form.setObjectName("Form")
         Form.resize(1139, 833)
         Form.setWindowIcon(QIcon('./data/windows.png'))
+        palette1 = QtGui.QPalette()
+        palette1.setColor(Form.backgroundRole(), QColor(135, 206, 250))  # 背景颜色
+        Form.setPalette(palette1)
+        Form.setAutoFillBackground(True)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
