@@ -25,6 +25,7 @@ from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
 from model.save_img import save_illegal_car, create_save_file
 from model.util.GUI import Ui_Form
 
+
 class Data(object):
     tracks = []  # 对应追踪编号的轨迹
     illegal_boxes_number = []  # 违规变道车的追踪编号
@@ -54,14 +55,7 @@ class MainWindow(Ui_Form):
         self.backend.message_info.connect(self.info)
         self.backend.message_warn.connect(self.warn)
         self.backend.show_image.connect(self.set_image)
-        self.read_video.clicked.connect(self.Read_Video)
-        # 开始检测线程
-        self.backend.start()
-        print('Start main loop!')
-
-        # 等待检测线程跑完第一张图片再显示界面
-        while self.backend.first_process_flag:
-            time.sleep(0.1)
+        self.read_video.clicked.connect(self.read_video_from_file)
 
     def info(self, msg):
         self.show_message.append(msg)
@@ -73,10 +67,14 @@ class MainWindow(Ui_Form):
         img = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888)
         self.show_video.setPixmap(QtGui.QPixmap.fromImage(img))
 
-    def Read_Video(self):
-        # video_name为本地视频路径
-        video_name, video_type = QFileDialog.getOpenFileName(self, '打开视频', '', '*.mp4')
-        print(video_name)
+    def read_video_from_file(self):
+        video_path, video_type = QFileDialog.getOpenFileName(self, '打开视频', '*.mp4')
+        self.backend.set_video_path(video_path)
+        self.info("读入视频成功！视频路径：" + video_path)
+        self.info("加载中...")
+        # 开始检测线程
+        self.backend.start()
+        print('Start main loop!')
 
 
 class MainThread(QThread):
@@ -91,8 +89,7 @@ class MainThread(QThread):
         self.comity_pedestrian = ComityPedestrian()
         self.traffic_flow = TrafficFlow()
         self.time_difference = TimeDifference()
-        self.cap = cv2.VideoCapture(conf.video_path)
-        self.first_process_flag = True
+        self.cap = None
 
         # darknet进程
         print('Loading yolo model...')
@@ -189,12 +186,16 @@ class MainThread(QThread):
         detections = self.darknet_pipe.recv()
         return detections
 
+    def set_video_path(self, video_path):
+        self.cap = cv2.VideoCapture(video_path)
+
     def run(self):
         while True:
             prev_time = time.time()
             ret, frame_read = self.cap.read()
             if frame_read is None:
-                break
+                self.warn("加载视频失败！")
+                continue
 
             if self.data.init_flag:
                 print('Image size: [' + str(frame_read.shape[1]) + ',' + str(frame_read.shape[0]) + ']')
@@ -223,7 +224,7 @@ class MainThread(QThread):
             cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
 
             # 红绿灯的颜色放在box最后面
-            #boxes = traffic_light(boxes, frame_rgb)
+            # boxes = traffic_light(boxes, frame_rgb)
 
             # 车牌识别
             self.get_license_plate(boxes, frame_read)
@@ -281,10 +282,6 @@ class MainThread(QThread):
             # 显示图片
             frame_read = cv2.resize(frame_read, (1640, 950), interpolation=cv2.INTER_LINEAR)
             self.set_image(frame_read)
-            self.first_process_flag = False
-
-        while True:
-            print('Could not load image')
 
 
 if __name__ == "__main__":
