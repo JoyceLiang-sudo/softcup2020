@@ -6,7 +6,7 @@ import sys
 from multiprocessing import Process, Pipe
 from PySide2.QtCore import Signal, QObject, QThread
 from PySide2.QtGui import QIcon
-from PySide2.QtWidgets import QApplication
+from PySide2.QtWidgets import QApplication, QFileDialog
 
 from model import lane_line
 from model.darknet.process import darknet_process
@@ -24,7 +24,6 @@ from model.running_red_lights import judge_running_car
 from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
 from model.save_img import save_illegal_car, create_save_file
 from model.util.GUI import Ui_Form
-
 
 class Data(object):
     tracks = []  # 对应追踪编号的轨迹
@@ -55,6 +54,7 @@ class MainWindow(Ui_Form):
         self.backend.message_info.connect(self.info)
         self.backend.message_warn.connect(self.warn)
         self.backend.show_image.connect(self.set_image)
+        self.read_video.clicked.connect(self.Read_Video)
         # 开始检测线程
         self.backend.start()
         print('Start main loop!')
@@ -72,6 +72,11 @@ class MainWindow(Ui_Form):
     def set_image(self, image):
         img = QtGui.QImage(image.data, image.shape[1], image.shape[0], QtGui.QImage.Format_RGB888)
         self.show_video.setPixmap(QtGui.QPixmap.fromImage(img))
+
+    def Read_Video(self):
+        # video_name为本地视频路径
+        video_name, video_type = QFileDialog.getOpenFileName(self, '打开视频', '', '*.mp4')
+        print(video_name)
 
 
 class MainThread(QThread):
