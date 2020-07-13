@@ -5,6 +5,7 @@ from PySide2 import QtGui
 import sys
 from multiprocessing import Process, Pipe
 from PySide2.QtCore import Signal, QObject, QThread
+from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import QApplication
 
 from model import lane_line
@@ -217,7 +218,7 @@ class MainThread(QThread):
             cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
 
             # 红绿灯的颜色放在box最后面
-            # boxes = traffic_light(boxes, frame_rgb)
+            #boxes = traffic_light(boxes, frame_rgb)
 
             # 车牌识别
             self.get_license_plate(boxes, frame_read)
