@@ -56,6 +56,10 @@ class MainWindow(Ui_Form):
         self.backend.message_warn.connect(self.warn)
         self.backend.show_image.connect(self.set_image)
         self.read_video.clicked.connect(self.read_video_from_file)
+        img = cv2.imread('./data/origin.jpg')
+        img = cv2.resize(img, (1640, 950), interpolation=cv2.INTER_LINEAR)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        self.set_image(img)
 
     def info(self, msg):
         self.show_message.append(msg)
@@ -136,13 +140,14 @@ class MainThread(QThread):
         #     # 打印车牌
         #     if (box[0] == 1 or box[0] == 2) and box[6] is not None:
         #         self.info(box[6])
-        self.info("帧率：{} ".format(1 / time))
+        # self.info("帧率：{} ".format(1 / time))
         illegal_tracks = [find_one_illegal_boxes(self.data.retrograde_cars_number, self.data.tracks),
                           find_one_illegal_boxes(self.data.illegal_parking_numbers, self.data.tracks),
                           find_one_illegal_boxes(self.data.true_running_car, self.data.tracks),
                           find_one_illegal_boxes(self.data.illegal_boxes_number, self.data.tracks),
                           find_one_illegal_boxes(self.data.no_comity_pedestrian_cars_number, self.data.tracks)]
         if time_flag:
+            self.info("车流量：" + str(self.data.traffic_flow))
             self.print_one_illegal_boxes(illegal_tracks[0], '逆行')
             self.print_one_illegal_boxes(illegal_tracks[1], '违停')
             self.print_one_illegal_boxes(illegal_tracks[2], '闯红灯')
@@ -262,6 +267,7 @@ class MainThread(QThread):
             # for track in self.data.tracks:
             #     if track[1] != 10:
             #         continue
+            #     track[2] = '鲁A1234'
             #     cv2.line(frame_read, (0, 0), track[-1], [255, 255, 200], 6)
             # 保存违规车辆图片
             save_illegal_car(frame_read, self.data, boxes)
@@ -271,8 +277,18 @@ class MainThread(QThread):
             draw_zebra_line(frame_read, self.data.zebra_line)
             draw_lane_lines(frame_read, self.data.lane_lines)
             draw_stop_line(frame_read, self.data.stop_line)
+            # 画车速
             # draw_speed_info(frame_read, self.data.speeds, boxes)
-
+            if len(self.data.illegal_area) > 0:
+                cv2.line(frame_read, (self.data.illegal_area[0][0][0][0], self.data.illegal_area[0][0][0][1]),
+                         (self.data.illegal_area[0][0][1][0], self.data.illegal_area[0][0][1][1]), (255, 255, 255),
+                         2)
+                # cv2.line(frame_read, (self.data.illegal_area[0][1][0][0], self.data.illegal_area[0][1][0][1]),
+                #          (self.data.illegal_area[0][1][1][0], self.data.illegal_area[0][1][1][1]),
+                #          (255, 255, 255),
+                #          2)
+                cv2.line(frame_read, (self.data.illegal_area[1][0][0], self.data.illegal_area[1][0][1]),
+                         (self.data.illegal_area[1][1][0], self.data.illegal_area[1][1][1]), (255, 255, 255), 2)
             # 打印预测信息
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:
