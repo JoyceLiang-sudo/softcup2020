@@ -13,8 +13,9 @@ def roi_mask(img, vertices):
     return masked_img
 
 
-def draw_stop_line(img, stop_line, color=(0, 0, 255), thickness=2):
-    cv2.line(img, (stop_line[0][0], stop_line[0][1]), (stop_line[1][0], stop_line[1][1]), color, thickness)
+def draw_stop_line(img, stop_line, color=(0, 215, 255), thickness=2):
+    if len(stop_line) > 0:
+        cv2.line(img, (stop_line[0][0], stop_line[0][1]), (stop_line[1][0], stop_line[1][1]), color, thickness)
 
 
 def draw_lane_lines(img, lane_lines, color=(0, 0, 255), thickness=2):

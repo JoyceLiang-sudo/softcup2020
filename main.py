@@ -78,6 +78,7 @@ class MainWindow(Ui_Form):
         self.info("读入视频成功！视频路径：" + video_path)
         self.info("加载中...")
         # 开始检测线程
+        self.backend.re_init()
         self.backend.start()
         print('Start main loop!')
 
@@ -133,15 +134,19 @@ class MainThread(QThread):
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         self.show_image.emit(img)
 
+    def re_init(self):
+        self.data = Data()
+        self.comity_pedestrian = ComityPedestrian()
+        self.traffic_flow = TrafficFlow()
+        self.time_difference = TimeDifference()
+        # print(2)
+        # print("1--")
+        # print(self.data.retrograde_cars_number)
+
     def print_message(self, boxes, time, time_flag):
         """
         向GUI打印识别信息
         """
-        # for box in boxes:
-        #     # 打印车牌
-        #     if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-        #         self.info(box[6])
-        # self.info("帧率：{} ".format(1 / time))
         illegal_tracks = [find_one_illegal_boxes(self.data.retrograde_cars_number, self.data.tracks),
                           find_one_illegal_boxes(self.data.illegal_parking_numbers, self.data.tracks),
                           find_one_illegal_boxes(self.data.true_running_car, self.data.tracks),
@@ -172,15 +177,13 @@ class MainThread(QThread):
                 self.plate_pipe.send(roi)
                 res = self.plate_pipe.recv()
                 if len(res) > 0 and res[0][1] > 0.6:
-                    # print((box[4][0] - box[3][0]) * (box[4][1] - box[3][1]))
                     box[6] = str(res[0][0])
-                    # print(res[0][0], res[0][1])
 
     def update_tracker(self, boxes, image):
         """
         更新追踪器
         """
-        self.tracker_pipe.send([boxes, image])
+        self.tracker_pipe.send([boxes, image,])
         res = self.tracker_pipe.recv()
         return res
 
@@ -200,7 +203,7 @@ class MainThread(QThread):
             prev_time = time.time()
             ret, frame_read = self.cap.read()
             if frame_read is None:
-                # self.warn("加载视频失败！")
+                self.warn("加载视频失败！")
                 continue
 
             if self.data.init_flag:
@@ -217,6 +220,8 @@ class MainThread(QThread):
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
 
+            # print("2--")
+            # print(self.data.retrograde_cars_number)
             # 调用darknet线程检测图片
             detections = self.detect_image(frame_resized)
 
@@ -242,10 +247,10 @@ class MainThread(QThread):
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds)
 
             # 检测礼让行人
-            self.data.no_comity_pedestrian_cars_number = \
-                judge_comity_pedestrian(frame_read, self.data.tracks,
-                                        self.comity_pedestrian,
-                                        self.data.no_comity_pedestrian_cars_number, boxes)
+            # self.data.no_comity_pedestrian_cars_number = \
+            #     judge_comity_pedestrian(frame_read, self.data.tracks,
+            #                             self.comity_pedestrian,
+            #                             self.data.no_comity_pedestrian_cars_number, boxes)
             #  检测闯红灯
             if boxes:
                 self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
@@ -258,38 +263,28 @@ class MainThread(QThread):
                                                                         self.data.illegal_boxes_number)
             # 检测车流量
             self.data.traffic_flow = get_traffic_flow(frame_read, self.traffic_flow, self.data.tracks, time.time())
+
+            # print("3--")
+            # print(self.data.retrograde_cars_number)
             # 检测逆行车辆
             self.data.retrograde_cars_number = get_retrograde_cars(frame_read, self.data.lane_lines, self.data.tracks,
                                                                    self.data.retrograde_cars_number)
+            # print("4--")
+            # print(self.data.retrograde_cars_number)
             # 检测违规停车
             self.data.illegal_parking_numbers = find_illegal_parking_cars(self.data.illegal_area,
                                                                           self.data.tracks,
                                                                           self.data.illegal_parking_numbers)
-            for track in self.data.tracks:
-                if track[1] != 25:
-                    continue
-                track[2] = '川J56A9B'
-                # cv2.line(frame_read, (0, 0), track[-1], [255, 255, 200], 6)
             # 保存违规车辆图片
             save_illegal_car(frame_read, self.data, boxes)
 
             # 画出预测结果
             draw_result(frame_read, boxes, self.data)
-            draw_zebra_line(frame_read, self.data.zebra_line)
-            draw_lane_lines(frame_read, self.data.lane_lines)
-            draw_stop_line(frame_read, self.data.stop_line)
+            # draw_zebra_line(frame_read, self.data.zebra_line)
+            # draw_lane_lines(frame_read, self.data.lane_lines)
+            # draw_stop_line(frame_read, self.data.stop_line)
             # 画车速
-            draw_speed_info(frame_read, self.data.speeds, boxes)
-            # if len(self.data.illegal_area) > 0:
-            #     cv2.line(frame_read, (self.data.illegal_area[0][0][0][0], self.data.illegal_area[0][0][0][1]),
-            #              (self.data.illegal_area[0][0][1][0], self.data.illegal_area[0][0][1][1]), (255, 0, 0),
-            #              2)
-            # cv2.line(frame_read, (self.data.illegal_area[0][1][0][0], self.data.illegal_area[0][1][0][1]),
-            #          (self.data.illegal_area[0][1][1][0], self.data.illegal_area[0][1][1][1]),
-            #          (255, 255, 255),
-            #          2)
-            # cv2.line(frame_read, (self.data.illegal_area[1][0][0], self.data.illegal_area[1][0][1]),
-            #          (self.data.illegal_area[1][1][0], self.data.illegal_area[1][1][1]), (255, 0, 0), 2)
+            # draw_speed_info(frame_read, self.data.speeds, boxes)
             # 打印预测信息
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:

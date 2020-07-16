@@ -21,7 +21,7 @@ def draw_zebra_line(img, zebra_line, thickness=2):
     h = zebra_line.ymax - zebra_line.ymin
     a = 1 / 2 * h
     cv2.rectangle(img, (0, int(zebra_line.ymin)), (2 * int(zebra_line.xmax), int(zebra_line.ymax)), (0, 255, 0), 3)
-    cv2.line(img, (0, int(zebra_line.ymin + a)), (2 * int(zebra_line.xmax), int(zebra_line.ymin + a)), (0, 0, 255),
+    cv2.line(img, (0, int(zebra_line.ymin + a)), (2 * int(zebra_line.xmax), int(zebra_line.ymin + a)), (128, 0, 0),
              thickness)
 
 
