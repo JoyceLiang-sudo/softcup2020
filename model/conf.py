@@ -17,10 +17,10 @@ conf.save_path4 = "retrograde_cars/"
 conf.save_path5 = "running_red/"
 
 # yolo配置文件
-conf.cfg_path = './data/Gaussian_yolov3_BDD.cfg'
-conf.weight_path = './data/Gaussian_yolov3_BDD.weights'
-conf.radar_data_path = './data/BDD.data'
-conf.names_path = './data/BDD.names'
+conf.cfg_path = './data/SoftCup.cfg'
+conf.weight_path = './data/SoftCup.weights'
+conf.radar_data_path = './data/SoftCup.data'
+conf.names_path = './data/SoftCup.names'
 
 # 置信度，大于此值会被判断为真
 conf.thresh = 0.3

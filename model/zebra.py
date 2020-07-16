@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from PIL import Image
 
 DEBUG = False
 
@@ -35,7 +34,6 @@ def delete_contours(contours, delete_list):
 
 
 def processing(img):
-    # GRAY = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     GRAY = cv2.medianBlur(img, 5)
     RET, binary = cv2.threshold(GRAY, 115, 255, cv2.THRESH_BINARY)
     if DEBUG:
@@ -153,11 +151,7 @@ def get_zebra_line(img):
     labels = predict(patches, DEBUG)
     indices = np.array(indices)
     ret, location = get_location(indices, labels, Ni, Nj)
-    # if DEBUG:
-    # for i, j in indices[labels == 1]:
-    #    cv2.rectangle(img, (j, i), (j + Nj, i + Ni), (0, 0, 255), 3)
     if ret:
-        # cv2.rectangle(img, location[0], location[1], (255, 0, 255), 3)
         (xmin, ymin) = location[0]
         (xmax, ymax) = location[1]
         return Zebra(xmax=xmax, xmin=xmin, ymax=ymax, ymin=ymin)

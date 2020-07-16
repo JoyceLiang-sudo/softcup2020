@@ -82,5 +82,7 @@ def deep_sort_process(pipe):
     encoder, tracker = init_deep_sort()
     while True:
         message = pipe.recv()
+        if message[2]:
+            encoder, tracker = init_deep_sort()
         res = tracker_update(message[0], message[1], encoder, tracker, conf.trackerConf.track_label)
         pipe.send(res)

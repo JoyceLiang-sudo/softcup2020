@@ -1,4 +1,3 @@
-from model.lane_line import get_intersection_point
 from model.util.point_util import *
 
 

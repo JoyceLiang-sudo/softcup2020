@@ -228,7 +228,6 @@ def draw_result(image, boxes, data, mode=False):
     else:
         for box in boxes:
             box_color = data.colors[box[0]]
-            box_color2 = data.colors[box[0]]
             box_thick = 1
             for number in data.illegal_boxes_number:
                 if number == box[5]:
@@ -252,12 +251,10 @@ def draw_result(image, boxes, data, mode=False):
                     box_thick = 10
                     break
 
-            if box[0] != 7 and box[0] != 6:
+            if box[0] != 7:
                 cv2.rectangle(image, box[3], box[4], box_color, box_thick)
-                # cv2.rectangle(image, box[3], box[4], box_color2, box_thick)
                 predicted_class = data.class_names[box[0]]
                 label = '{} {:.2f}'.format(predicted_class, box[1])
-                # cv2.rectangle(image, box[3], box[4], box_color, 1)
                 if box[0] != 6:
                     cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                                 data.colors[box[0]], 1)
@@ -276,15 +273,12 @@ def draw_result(image, boxes, data, mode=False):
                         judge_break = 1
                     if judge_break == 1:
                         break
-            # # 画车牌
-            # if (box[0] == 1 or box[0] == 2) and box[6] is not None:
-            #     cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
             # 红绿灯
-            # if box[0] == 6 and box[6] is not None:
-            #     if box[6] == 'green':
-            #         cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-            #     else:
-            #         cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
+            if box[0] == 6 and box[6] is not None:
+                if box[6] == 'green':
+                    cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+                else:
+                    cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
 
 def judge_illegal_change_lanes(tracks, lane_lines, illegal_boxes_number):
@@ -310,7 +304,6 @@ def judge_illegal_change_lanes(tracks, lane_lines, illegal_boxes_number):
         if flag:
             illegal_boxes_number.append(number1)
     return illegal_boxes_number
-    # return False
 
 
 # 计算斜率

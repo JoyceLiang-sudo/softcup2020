@@ -9,7 +9,6 @@ def save_in_file(img, box, file_name):
     roi_img = img[box[3][1]:box[4][1], box[3][0]:box[4][0]]
     frame_rgb = cv2.cvtColor(roi_img, cv2.COLOR_BGR2RGB)
     string_time = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time()))
-    # print(string_time)
     cv2.imwrite(conf.save_path + file_name + "/" + string_time + ".jpg", frame_rgb)
 
 
@@ -17,6 +16,7 @@ def save_illegal_car(img, data, boxes):
     """
     保存违规车辆图片
     """
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     for box in boxes:
         if box[0] != 2:
             continue

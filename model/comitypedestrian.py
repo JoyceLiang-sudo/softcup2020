@@ -13,7 +13,6 @@ def get_predict_people_lines(img, tracks):
     car_tracks = []
     people_tracks = []
     range_y_min = int(img.shape[0] / 4)
-    # cv2.line(img, (0, range_y_min), (1000, range_y_min), [255, 0, 239], 4)
     for track in tracks:
         if len(track) < 8:
             continue
@@ -177,10 +176,4 @@ def judge_comity_pedestrian(img, tracks, comity_pedestrian, numbers, boxes):
     result_cars_people = get_result_cars_people(comity_pedestrian)
     # 取消重复项
     result_cars_people = find_real_numbers(numbers, result_cars_people)
-    # for car_person in comity_pedestrian.car_pass_cars_people:
-    #     for person_car in comity_pedestrian.person_pass_cars_people:
-    #         if car_person[0] == person_car[0] and car_person[2] == person_car[2]:
-    #             cv2.line(img, car_person[1], car_person[3], [245, 0, 235], 3)
-    #             cv2.circle(img, car_person[1], 8, [255, 0, 255], 8)
-    #             cv2.circle(img, car_person[3], 8, [255, 0, 255], 8)
     return result_cars_people

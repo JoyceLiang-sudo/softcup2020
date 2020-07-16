@@ -107,12 +107,6 @@ def judge_illegal_area(img, lanes, stop_line):
     lines, line_img = hough_lines(roi_mat, rho, theta, threshold, min_line_length, max_line_gap)
     flag = get_judge_result(lines)
     real_area = [possible_area, stop_line]
-    # for line in lines:
-    #     cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), [0, 0, 255], 4)
-    # out_win = "test"
-    # cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
-    # # frame_rgb = cv2.cvtColor(roi_edges, cv2.COLOR_BGR2RGB)
-    # cv2.imshow(out_win, roi_mat)
     return flag, real_area
 
 

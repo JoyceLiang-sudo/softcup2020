@@ -50,9 +50,6 @@ def judge_time_up(time, traffic_flow_class):
 def get_traffic_flow(img, traffic_flow_class, tracks, time):
     # 预置参考线
     reference_line = [[0, int(img.shape[0] / 2)], [img.shape[1], int(img.shape[0] / 2)]]
-    #
-    # cv2.line(img, (reference_line[0][0], reference_line[0][1]), (reference_line[1][0], reference_line[1][1]),
-    #          [203, 192, 255], 3)
     # 判断是否到时间周期
     time_up_flag = judge_time_up(time, traffic_flow_class)
     # 计算当前帧的通过个数

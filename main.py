@@ -5,7 +5,6 @@ from PySide2 import QtGui
 import sys
 from multiprocessing import Process, Pipe
 from PySide2.QtCore import Signal, QObject, QThread
-from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import QApplication, QFileDialog
 
 from model import lane_line
@@ -28,22 +27,24 @@ from model.detect_color import traffic_light
 
 
 class Data(object):
-    tracks = []  # 对应追踪编号的轨迹
-    illegal_boxes_number = []  # 违规变道车的追踪编号
-    lane_lines = []  # 车道线
-    stop_line = []  # 停车线
-    lanes = []  # 车道
-    illegal_area = []  # 违停区域
-    illegal_parking_numbers = []  # 违停车辆编号
-    zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
-    speeds = []  # 速度信息
-    traffic_flow = 0  # 车流量
-    init_flag = True  # 首次运行标志位
-    retrograde_cars_number = []  # 逆行车号
-    no_comity_pedestrian_cars_number = []  # 不礼让行人的车号
-    true_running_car = []  # 闯红灯车辆的追踪编号
-    running_car = []
-    origin = []
+    def __init__(self):
+        self.tracks = []  # 对应追踪编号的轨迹
+        self.illegal_boxes_number = []  # 违规变道车的追踪编号
+        self.lane_lines = []  # 车道线
+        self.stop_line = []  # 停车线
+        self.lanes = []  # 车道
+        self.illegal_area = []  # 违停区域
+        self.illegal_parking_numbers = []  # 违停车辆编号
+        self.zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
+        self.speeds = []  # 速度信息
+        self.traffic_flow = 0  # 车流量
+        self.init_flag = True  # 首次运行标志位
+        self.retrograde_cars_number = []  # 逆行车号
+        self.no_comity_pedestrian_cars_number = []  # 不礼让行人的车号
+        self.true_running_car = []  # 闯红灯车辆的追踪编号
+        self.running_car = []
+        self.origin = []
+
     class_names = get_names(conf.names_path)  # 标签名称
     colors = get_colors(class_names)  # 每个标签对应的颜色
 
@@ -74,11 +75,11 @@ class MainWindow(Ui_Form):
 
     def read_video_from_file(self):
         video_path, video_type = QFileDialog.getOpenFileName(self, '打开视频', "~", "Video Files(*.mp4 *.avi)")
+        self.backend.re_init()
         self.backend.set_video_path(video_path)
         self.info("读入视频成功！视频路径：" + video_path)
         self.info("加载中...")
         # 开始检测线程
-        self.backend.re_init()
         self.backend.start()
         print('Start main loop!')
 
@@ -95,6 +96,7 @@ class MainThread(QThread):
         self.comity_pedestrian = ComityPedestrian()
         self.traffic_flow = TrafficFlow()
         self.time_difference = TimeDifference()
+        self.restart_flag = True
         self.cap = None
 
         # darknet进程
@@ -139,9 +141,7 @@ class MainThread(QThread):
         self.comity_pedestrian = ComityPedestrian()
         self.traffic_flow = TrafficFlow()
         self.time_difference = TimeDifference()
-        # print(2)
-        # print("1--")
-        # print(self.data.retrograde_cars_number)
+        self.restart_flag = True
 
     def print_message(self, boxes, time, time_flag):
         """
@@ -179,11 +179,13 @@ class MainThread(QThread):
                 if len(res) > 0 and res[0][1] > 0.6:
                     box[6] = str(res[0][0])
 
-    def update_tracker(self, boxes, image):
+    def update_tracker(self, boxes, image, restart_flag):
         """
         更新追踪器
         """
-        self.tracker_pipe.send([boxes, image,])
+        if restart_flag:
+            self.restart_flag = False
+        self.tracker_pipe.send([boxes, image, restart_flag])
         res = self.tracker_pipe.recv()
         return res
 
@@ -220,8 +222,6 @@ class MainThread(QThread):
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
 
-            # print("2--")
-            # print(self.data.retrograde_cars_number)
             # 调用darknet线程检测图片
             detections = self.detect_image(frame_resized)
 
@@ -229,7 +229,7 @@ class MainThread(QThread):
             boxes = convert_output(detections)
 
             # 更新tracker
-            boxes = self.update_tracker(boxes, frame_resized)
+            boxes = self.update_tracker(boxes, frame_resized, self.restart_flag)
 
             # 把识别框映射为输入图片大小
             cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
@@ -247,10 +247,10 @@ class MainThread(QThread):
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds)
 
             # 检测礼让行人
-            # self.data.no_comity_pedestrian_cars_number = \
-            #     judge_comity_pedestrian(frame_read, self.data.tracks,
-            #                             self.comity_pedestrian,
-            #                             self.data.no_comity_pedestrian_cars_number, boxes)
+            self.data.no_comity_pedestrian_cars_number = \
+                judge_comity_pedestrian(frame_read, self.data.tracks,
+                                        self.comity_pedestrian,
+                                        self.data.no_comity_pedestrian_cars_number, boxes)
             #  检测闯红灯
             if boxes:
                 self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
@@ -264,13 +264,9 @@ class MainThread(QThread):
             # 检测车流量
             self.data.traffic_flow = get_traffic_flow(frame_read, self.traffic_flow, self.data.tracks, time.time())
 
-            # print("3--")
-            # print(self.data.retrograde_cars_number)
             # 检测逆行车辆
             self.data.retrograde_cars_number = get_retrograde_cars(frame_read, self.data.lane_lines, self.data.tracks,
                                                                    self.data.retrograde_cars_number)
-            # print("4--")
-            # print(self.data.retrograde_cars_number)
             # 检测违规停车
             self.data.illegal_parking_numbers = find_illegal_parking_cars(self.data.illegal_area,
                                                                           self.data.tracks,
@@ -280,11 +276,11 @@ class MainThread(QThread):
 
             # 画出预测结果
             draw_result(frame_read, boxes, self.data)
-            # draw_zebra_line(frame_read, self.data.zebra_line)
-            # draw_lane_lines(frame_read, self.data.lane_lines)
-            # draw_stop_line(frame_read, self.data.stop_line)
+            draw_zebra_line(frame_read, self.data.zebra_line)
+            draw_lane_lines(frame_read, self.data.lane_lines)
+            draw_stop_line(frame_read, self.data.stop_line)
             # 画车速
-            # draw_speed_info(frame_read, self.data.speeds, boxes)
+            draw_speed_info(frame_read, self.data.speeds, boxes)
             # 打印预测信息
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:
