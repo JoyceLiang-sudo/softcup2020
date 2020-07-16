@@ -243,21 +243,30 @@ def draw_result(image, boxes, data, mode=False):
                     break
             for car_person in data.no_comity_pedestrian_cars_number:
                 if car_person == box[5]:
-                    box_color = [0, 0, 255]
+                    box_color = [230, 100, 100]
                     box_thick = 10
                     break
 
             for car_light in data.true_running_car:
                 if car_light == box[5]:
-                    box_color = [0, 0, 255]
+                    box_color = [230, 100, 100]
                     box_thick = 10
                     break
-            cv2.rectangle(image, box[3], box[4], box_color, box_thick)
-            # cv2.rectangle(image, box[3], box[4], box_color2, box_thick)
-            predicted_class = data.class_names[box[0]]
-            label = '{} {:.2f}'.format(predicted_class, box[1])
-            # cv2.rectangle(image, box[3], box[4], box_color, 1)
-            cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
+            for car_run in data.retrograde_cars_number:
+                if car_run == box[5]:
+                    box_color = [230, 100, 100]
+                    box_thick = 10
+                    break
+
+            if box[0] != 7:
+                cv2.rectangle(image, box[3], box[4], box_color, box_thick)
+                # cv2.rectangle(image, box[3], box[4], box_color2, box_thick)
+                predicted_class = data.class_names[box[0]]
+                label = '{} {:.2f}'.format(predicted_class, box[1])
+                # cv2.rectangle(image, box[3], box[4], box_color, 1)
+                if box[0] != 6:
+                    cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                                data.colors[box[0]], 1)
 
             # 画追踪编号
             if box[5] != -1:
@@ -278,7 +287,10 @@ def draw_result(image, boxes, data, mode=False):
             #     cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
             # 红绿灯
             if box[0] == 6 and box[6] is not None:
-                cv2.putText(image, box[6], box[2], cv2.FONT_HERSHEY_SIMPLEX, 0.5, data.colors[box[0]], 1)
+                if box[6] == 'green':
+                    cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+                else:
+                    cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
 
 def judge_illegal_change_lanes(tracks, lane_lines, illegal_boxes_number):

@@ -32,7 +32,8 @@ def judge_running_car(frame_read, origin, running_car, boxes, tracks, stop_line,
                                          track[-1],
                                          track[-2]):
                                     running_car.append(track[1])
-
-                    if track[-1][1] < frame_read.shape[0]:
-                        true_running_car = running_car
+                        if track[1] in running_car:
+                            if track[-1][1] < frame_read.shape[0]/3:
+                                if not track[1] in true_running_car:
+                                    true_running_car.append(track[1])
     return running_car, true_running_car

@@ -24,6 +24,7 @@ from model.running_red_lights import judge_running_car
 from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
 from model.save_img import save_illegal_car, create_save_file
 from model.util.GUI import Ui_Form
+from model.detect_color import traffic_light
 
 
 class Data(object):
@@ -72,7 +73,7 @@ class MainWindow(Ui_Form):
         self.show_video.setPixmap(QtGui.QPixmap.fromImage(img))
 
     def read_video_from_file(self):
-        video_path, video_type = QFileDialog.getOpenFileName(self, '打开视频', '*.mp4')
+        video_path, video_type = QFileDialog.getOpenFileName(self, '打开视频', "~", "Video Files(*.mp4 *.avi)")
         self.backend.set_video_path(video_path)
         self.info("读入视频成功！视频路径：" + video_path)
         self.info("加载中...")
@@ -147,7 +148,7 @@ class MainThread(QThread):
                           find_one_illegal_boxes(self.data.illegal_boxes_number, self.data.tracks),
                           find_one_illegal_boxes(self.data.no_comity_pedestrian_cars_number, self.data.tracks)]
         if time_flag:
-            self.info("车流量：" + str(self.data.traffic_flow))
+            self.info("车流量：" + str(self.data.traffic_flow) + "个/分钟")
             self.print_one_illegal_boxes(illegal_tracks[0], '逆行')
             self.print_one_illegal_boxes(illegal_tracks[1], '违停')
             self.print_one_illegal_boxes(illegal_tracks[2], '闯红灯')
@@ -199,7 +200,7 @@ class MainThread(QThread):
             prev_time = time.time()
             ret, frame_read = self.cap.read()
             if frame_read is None:
-                self.warn("加载视频失败！")
+                # self.warn("加载视频失败！")
                 continue
 
             if self.data.init_flag:
@@ -229,7 +230,7 @@ class MainThread(QThread):
             cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
 
             # 红绿灯的颜色放在box最后面
-            # boxes = traffic_light(boxes, frame_rgb)
+            boxes = traffic_light(boxes, frame_read)
 
             # 车牌识别
             self.get_license_plate(boxes, frame_read)
@@ -245,7 +246,7 @@ class MainThread(QThread):
                 judge_comity_pedestrian(frame_read, self.data.tracks,
                                         self.comity_pedestrian,
                                         self.data.no_comity_pedestrian_cars_number, boxes)
-            # # 检测闯红灯
+            #  检测闯红灯
             if boxes:
                 self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
                                                                                       self.data.running_car,
@@ -264,11 +265,11 @@ class MainThread(QThread):
             self.data.illegal_parking_numbers = find_illegal_parking_cars(self.data.illegal_area,
                                                                           self.data.tracks,
                                                                           self.data.illegal_parking_numbers)
-            # for track in self.data.tracks:
-            #     if track[1] != 10:
-            #         continue
-            #     track[2] = '鲁A1234'
-            #     cv2.line(frame_read, (0, 0), track[-1], [255, 255, 200], 6)
+            for track in self.data.tracks:
+                if track[1] != 25:
+                    continue
+                track[2] = '川J56A9B'
+                # cv2.line(frame_read, (0, 0), track[-1], [255, 255, 200], 6)
             # 保存违规车辆图片
             save_illegal_car(frame_read, self.data, boxes)
 
@@ -278,17 +279,17 @@ class MainThread(QThread):
             draw_lane_lines(frame_read, self.data.lane_lines)
             draw_stop_line(frame_read, self.data.stop_line)
             # 画车速
-            # draw_speed_info(frame_read, self.data.speeds, boxes)
-            if len(self.data.illegal_area) > 0:
-                cv2.line(frame_read, (self.data.illegal_area[0][0][0][0], self.data.illegal_area[0][0][0][1]),
-                         (self.data.illegal_area[0][0][1][0], self.data.illegal_area[0][0][1][1]), (255, 255, 255),
-                         2)
-                # cv2.line(frame_read, (self.data.illegal_area[0][1][0][0], self.data.illegal_area[0][1][0][1]),
-                #          (self.data.illegal_area[0][1][1][0], self.data.illegal_area[0][1][1][1]),
-                #          (255, 255, 255),
-                #          2)
-                cv2.line(frame_read, (self.data.illegal_area[1][0][0], self.data.illegal_area[1][0][1]),
-                         (self.data.illegal_area[1][1][0], self.data.illegal_area[1][1][1]), (255, 255, 255), 2)
+            draw_speed_info(frame_read, self.data.speeds, boxes)
+            # if len(self.data.illegal_area) > 0:
+            #     cv2.line(frame_read, (self.data.illegal_area[0][0][0][0], self.data.illegal_area[0][0][0][1]),
+            #              (self.data.illegal_area[0][0][1][0], self.data.illegal_area[0][0][1][1]), (255, 0, 0),
+            #              2)
+            # cv2.line(frame_read, (self.data.illegal_area[0][1][0][0], self.data.illegal_area[0][1][0][1]),
+            #          (self.data.illegal_area[0][1][1][0], self.data.illegal_area[0][1][1][1]),
+            #          (255, 255, 255),
+            #          2)
+            # cv2.line(frame_read, (self.data.illegal_area[1][0][0], self.data.illegal_area[1][0][1]),
+            #          (self.data.illegal_area[1][1][0], self.data.illegal_area[1][1][1]), (255, 0, 0), 2)
             # 打印预测信息
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:
