@@ -206,3 +206,70 @@ def get_lanes(img, lane_lines):
         lines_group = make_lines_group(lane_lines)
         lanes = make_lanes(img, lines_group)
         return lanes
+
+
+def set_lanes_message():
+    """
+    输入车道信息
+    0-无，1-左转，2-直行，3-右转，12-左转加直行，23-右转加直行，4-公交专用道
+    :return:车道信息数组
+    """
+    lane_message = []
+    lane_numbers = 3
+    lane_message.append(2)
+    lane_message.append(1)
+    lane_message.append(0)
+    return lane_message
+
+
+def make_tracks_lane(tracks, lanes, stop_line, lanes_message):
+    """
+    为每个车辆轨迹匹配车道
+    :param tracks: 车辆轨迹数组
+    :param lanes: 车道
+    :param stop_line: 停车线
+    :param lanes_message: 车道信息
+    :return: tracks
+    """
+    now_tracks = []
+    message_vector = []
+    for track in tracks:
+        t_track = track
+        message = []
+        lane_message = []
+        # 如果类别不是车辆，则过滤
+        if track[0] != 2:
+            now_tracks.append(t_track)
+            continue
+        # 如果车辆在停车线上方，则过滤
+        if track[-1][1] < stop_line[0][1]:
+            now_tracks.append(t_track)
+            continue
+        # 如果车辆在最左侧车道线左边，则过滤
+        if judge_point_line_position(track[-1], lanes[0][0]) != -1:
+            now_tracks.append(t_track)
+            continue
+        # 如果车辆在最右侧车道线右边，则过滤
+        if judge_point_line_position(track[-1], lanes[-1][1]) != 1:
+            now_tracks.append(t_track)
+            continue
+        # 如果车辆已被分配有向车道，则过滤
+        if track[3][2] != 0:
+            now_tracks.append(t_track)
+            continue
+        for i in range(0, len(lanes)):
+            if judge_point_in_lines(track[-1], lanes[i][0], lanes[i][1]):
+                message.append(track[0])
+                message.append(track[1])
+                message.append(track[2])
+                lane_message.append(lanes[i][0])
+                lane_message.append(lanes[i][1])
+                lane_message.append(lanes_message[i])
+                lane_message.append(track[3][3])
+                message.append(lane_message)
+                for j in range(4,len(track)):
+                    message.append(track[j])
+                message_vector.append(message)
+                break
+    now_tracks.extend(message_vector)
+    return now_tracks

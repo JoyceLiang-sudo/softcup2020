@@ -133,7 +133,7 @@ def judge_car_parking(track):
             continue
 
 
-def find_illegal_area_cars(illegal_area, tracks):
+def find_illegal_area_cars(illegal_area, tracks, track_kinds):
     """
     找出在违停区域的车
     """
@@ -143,7 +143,7 @@ def find_illegal_area_cars(illegal_area, tracks):
     for track in tracks:
         if track[1] != 2:
             continue
-        if len(track) < 8:
+        if len(track) < 4 + track_kinds:
             continue
         if judge_point_line_position(track[-1], illegal_area[0][0]) != 1:
             continue
@@ -157,10 +157,10 @@ def find_illegal_area_cars(illegal_area, tracks):
     return illegal_numbers
 
 
-def find_illegal_parking_cars(illegal_area, tracks, numbers):
+def find_illegal_parking_cars(illegal_area, tracks, numbers, track_kinds):
     """
     找出在违停区域停车的车
     """
-    illegal_cars = find_illegal_area_cars(illegal_area, tracks)
+    illegal_cars = find_illegal_area_cars(illegal_area, tracks, track_kinds)
     now_numbers = find_real_numbers(numbers, illegal_cars)
     return now_numbers

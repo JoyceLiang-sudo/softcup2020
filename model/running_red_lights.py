@@ -6,7 +6,7 @@ def ccw(A, B, C):
     return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
 
 
-def judge_running_car(frame_read, origin, running_car, boxes, tracks, stop_line, lane_lines):
+def judge_running_car(frame_read, origin, running_car, boxes, tracks, stop_line, lane_lines, track_kinds):
     true_running_car = []
     if boxes:
         for box in boxes:
@@ -22,7 +22,7 @@ def judge_running_car(frame_read, origin, running_car, boxes, tracks, stop_line,
                                 if track[-1][1] > frame_read.shape[0]:
                                     running_car.remove(track[1])
                         else:
-                            if len(track) > 5:
+                            if len(track) > track_kinds + 1:
                                 for i in range(0, len(origin)):
                                     if track[1] == origin[i]:
                                         if track[-1] != track[-2]:

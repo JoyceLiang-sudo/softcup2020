@@ -10,7 +10,7 @@ from PySide2.QtWidgets import QApplication, QFileDialog
 from model import lane_line
 from model.darknet.process import darknet_process
 from model.deep_sort.process import deep_sort_process
-from model.lane_line import draw_lane_lines, draw_stop_line
+from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane
 from model.plate import plate_process
 from model.car import speed_measure, draw_speed_info
 from model.util.point_util import *
@@ -24,13 +24,17 @@ from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
 from model.save_img import save_illegal_car, create_save_file
 from model.util.GUI import Ui_Form
 from model.detect_color import traffic_light
+from model.camera import set_camera_message
+from model.illegal_change_lanes import judge_illegal_change_lanes
 
 
 class Data(object):
     def __init__(self):
         self.tracks = []  # 对应追踪编号的轨迹
+        self.tracks_kinds = 5  # 轨迹数组变量种类
         self.illegal_boxes_number = []  # 违规变道车的追踪编号
         self.lane_lines = []  # 车道线
+        self.lanes_message = []  # 车道信息（从左到右）
         self.stop_line = []  # 停车线
         self.lanes = []  # 车道
         self.illegal_area = []  # 违停区域
@@ -44,6 +48,7 @@ class Data(object):
         self.true_running_car = []  # 闯红灯车辆的追踪编号
         self.running_car = []
         self.origin = []
+        self.camera_message = []  # 相机的相关信息
 
     class_names = get_names(conf.names_path)  # 标签名称
     colors = get_colors(class_names)  # 每个标签对应的颜色
@@ -143,7 +148,7 @@ class MainThread(QThread):
         self.time_difference = TimeDifference()
         self.restart_flag = True
 
-    def print_message(self, boxes, time, time_flag):
+    def print_message(self, time_flag):
         """
         向GUI打印识别信息
         """
@@ -214,9 +219,11 @@ class MainThread(QThread):
                 self.data.zebra_line = get_zebra_line(frame_read)
                 self.data.lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line)
                 self.data.lanes = lane_line.get_lanes(frame_read, self.data.lane_lines)
+                self.data.lanes_message = lane_line.set_lanes_message()
                 self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
                 self.traffic_flow.pre_time = time.time()
                 self.time_difference.pre_time = time.time()
+                self.data.camera_message = set_camera_message()
                 self.data.init_flag = False
 
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
@@ -243,50 +250,63 @@ class MainThread(QThread):
             # 制作轨迹
             make_track(boxes, self.data.tracks)
 
+            # 匹配车道
+            self.data.tracks = make_tracks_lane(self.data.tracks, self.data.lanes, self.data.stop_line,
+                                                self.data.lanes_message)
+
             # 计算速度
-            speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds)
+            speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
 
             # 检测礼让行人
             self.data.no_comity_pedestrian_cars_number = \
                 judge_comity_pedestrian(frame_read, self.data.tracks,
                                         self.comity_pedestrian,
-                                        self.data.no_comity_pedestrian_cars_number, boxes)
+                                        self.data.no_comity_pedestrian_cars_number, boxes, self.data.tracks_kinds)
             #  检测闯红灯
             if boxes:
                 self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
                                                                                       self.data.running_car,
                                                                                       boxes, self.data.tracks,
                                                                                       self.data.stop_line,
-                                                                                      self.data.lane_lines)
+                                                                                      self.data.lane_lines,
+                                                                                      self.data.tracks_kinds)
             # 检测违规变道
-            self.data.illegal_boxes_number = judge_illegal_change_lanes(self.data.tracks, self.data.lane_lines,
-                                                                        self.data.illegal_boxes_number)
+            self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_read.shape[0], self.data.tracks,
+                                                                        self.data.lane_lines,
+                                                                        self.data.illegal_boxes_number,
+                                                                        self.data.tracks_kinds)
             # 检测车流量
-            self.data.traffic_flow = get_traffic_flow(frame_read, self.traffic_flow, self.data.tracks, time.time())
+            self.data.traffic_flow = get_traffic_flow(frame_read, self.traffic_flow, self.data.tracks, time.time(),
+                                                      self.data.tracks_kinds)
 
             # 检测逆行车辆
             self.data.retrograde_cars_number = get_retrograde_cars(frame_read, self.data.lane_lines, self.data.tracks,
-                                                                   self.data.retrograde_cars_number)
+                                                                   self.data.retrograde_cars_number,
+                                                                   self.data.tracks_kinds)
             # 检测违规停车
             self.data.illegal_parking_numbers = find_illegal_parking_cars(self.data.illegal_area,
                                                                           self.data.tracks,
-                                                                          self.data.illegal_parking_numbers)
+                                                                          self.data.illegal_parking_numbers,
+                                                                          self.data.tracks_kinds)
             # 保存违规车辆图片
             save_illegal_car(frame_read, self.data, boxes)
 
             # 画出预测结果
-            draw_result(frame_read, boxes, self.data)
+            draw_result(frame_read, boxes, self.data, self.data.tracks_kinds)
             draw_zebra_line(frame_read, self.data.zebra_line)
             draw_lane_lines(frame_read, self.data.lane_lines)
             draw_stop_line(frame_read, self.data.stop_line)
             # 画车速
             draw_speed_info(frame_read, self.data.speeds, boxes)
+            for track in self.data.tracks:
+                if track[3][3] == -1:
+                    cv2.circle(frame_read, track[-1], 5, [0, 0, 255], 5)
             # 打印预测信息
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:
                 time_flag = True
                 self.time_difference.pre_time = time.time()
-            self.print_message(boxes, time.time() - prev_time, time_flag)
+            self.print_message(time_flag)
             # 显示图片
             frame_read = cv2.resize(frame_read, (1640, 950), interpolation=cv2.INTER_LINEAR)
             self.set_image(frame_read)

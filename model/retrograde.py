@@ -25,12 +25,12 @@ def cal_x_y_weight(line_slope, car_point, lane_lines):
     return x_weight, y_weight
 
 
-def judge_run_direction(line_slope, track, lane_lines):
+def judge_run_direction(line_slope, track, lane_lines, track_kinds):
     """
     判断汽车行驶方向
     -1为下，0为停，1为上
     """
-    if len(track) < 13:
+    if len(track) < track_kinds + 9:
         return 0
     x_weight1, y_weight1 = cal_x_y_weight(line_slope, track[-5], lane_lines)
     x_weight2, y_weight2 = cal_x_y_weight(line_slope, track[-1], lane_lines)
@@ -44,12 +44,12 @@ def judge_run_direction(line_slope, track, lane_lines):
     return 0
 
 
-def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines):
+def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds):
     retrograde_numbers = []
     for track in tracks:
         if track[0] != 2:
             continue
-        if len(track) < 4:
+        if len(track) < track_kinds:
             continue
         if track[-1][1] < range_lines[0][0][1]:
             continue
@@ -57,7 +57,7 @@ def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines):
             continue
         if judge_point_line_position(track[-1], range_lines[2]) >= 0:
             continue
-        flag = judge_run_direction(line_slope, track, lane_lines)
+        flag = judge_run_direction(line_slope, track, lane_lines, track_kinds)
         if flag < 0:
             retrograde_numbers.append(track[1])
 
@@ -79,7 +79,7 @@ def get_real_numbers(numbers, retrograde_numbers):
     return numbers
 
 
-def get_retrograde_cars(img, lane_lines, tracks, numbers):
+def get_retrograde_cars(img, lane_lines, tracks, numbers, track_kinds):
     """
     得到逆行车辆
     """
@@ -87,6 +87,6 @@ def get_retrograde_cars(img, lane_lines, tracks, numbers):
         return []
     range_lines = make_range_lines(img, lane_lines)
     line_slope = get_slope(lane_lines[0][0], lane_lines[0][1])
-    retrograde_numbers = get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines)
+    retrograde_numbers = get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds)
     real_numbers = get_real_numbers(numbers, retrograde_numbers)
     return real_numbers

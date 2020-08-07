@@ -10,13 +10,13 @@ def get_speed(p1, p2, time):
     return (calculate_distance(p1, p2) + sys.float_info.min) / time
 
 
-def speed_measure(tracks, time, speeds):
+def speed_measure(tracks, time, speeds, track_kinds):
     """
     测速
     追踪编号 中点 速度
     """
     for track in tracks:
-        if len(track) > 4:
+        if len(track) > track_kinds:
             now_speed = get_speed(track[-1], track[-2], time)  # 这一帧的速度
             add_flag = False
             # 遍历速度列表

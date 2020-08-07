@@ -8,44 +8,44 @@ class ComityPedestrian(object):
 
 
 # 解出行人前沿轨迹
-def get_predict_people_lines(img, tracks):
+def get_predict_people_lines(img, tracks, track_kinds):
     predict_people_lines = []
     car_tracks = []
     people_tracks = []
     range_y_min = int(img.shape[0] / 4)
     for track in tracks:
-        if len(track) < 8:
+        if len(track) < 4 + track_kinds:
             continue
         if track[-1][1] < range_y_min:
             continue
-        if calculate_distance(track[3], track[-1]) < 50:
+        if calculate_distance(track[track_kinds - 1], track[-1]) < 50:
             continue
         if track[0] == 2:
             car_tracks.append(track)
             continue
         if track[0] == 4:
             people_tracks.append(track)
-            predict_people_line = get_predict_people_line(img, track)
+            predict_people_line = get_predict_people_line(img, track, track_kinds)
             predict_people_lines.append(predict_people_line)
     return predict_people_lines, car_tracks, people_tracks
 
 
 # 解出单个行人前沿轨迹
-def get_predict_people_line(img, track):
-    if len(track) < 4:
+def get_predict_people_line(img, track, track_kinds):
+    if len(track) < track_kinds:
         predict_people_line = [[0, 0], [0, 0]]
         return predict_people_line
-    long_line = [[track[-1][0], track[-1][1]], [track[3][0], track[3][1]]]
-    slope = get_slope(track[-1], track[3])
+    long_line = [[track[-1][0], track[-1][1]], [track[track_kinds - 1][0], track[track_kinds - 1][1]]]
+    slope = get_slope(track[-1], track[track_kinds - 1])
     possible_points = get_possible_points(img, slope, long_line)
-    real_point = get_another_point(track, possible_points)
+    real_point = get_another_point(track, possible_points, track_kinds)
     predict_people_line = [track[1], track[-1], real_point]
     return predict_people_line
 
 
 # 解出行人前沿轨迹的图像边界点
-def get_another_point(track, possible_points):
-    pre_person_point = track[3]
+def get_another_point(track, possible_points, track_kinds):
+    pre_person_point = track[track_kinds - 1]
     now_person_point = track[-1]
     if pre_person_point[0] == now_person_point[0]:
         pre_person_point = [pre_person_point[0] + 1, pre_person_point[1]]
@@ -95,11 +95,12 @@ def get_another_lines(img, slope, long_line):
 
 
 # 当车压过人的前沿轨迹时，找到对应车和人
-def find_car_pass(predict_people_lines, car_tracks, comity_pedestrian):
+def find_car_pass(predict_people_lines, car_tracks, comity_pedestrian, track_kinds):
     car_pass_cars_people = []
     for car_track in car_tracks:
         for predict_people_line in predict_people_lines:
-            if judge_two_line_intersect(predict_people_line[1], predict_people_line[2], car_track[3], car_track[-1]):
+            if judge_two_line_intersect(predict_people_line[1], predict_people_line[2], car_track[track_kinds - 1],
+                                        car_track[-1]):
                 car_pass_cars_people.append([car_track[1], car_track[-1],
                                              predict_people_line[0], predict_people_line[1]])
     for car_pass_car_person in car_pass_cars_people:
@@ -114,11 +115,12 @@ def find_car_pass(predict_people_lines, car_tracks, comity_pedestrian):
 
 
 # 当人走过车的行驶轨迹时，找到对应车和人
-def find_people_pass(people_tracks, car_tracks, comity_pedestrian):
+def find_people_pass(people_tracks, car_tracks, comity_pedestrian, track_kinds):
     person_pass_cars_people = []
     for car_track in car_tracks:
         for people_track in people_tracks:
-            if judge_two_line_intersect(car_track[3], car_track[-1], people_track[3], people_track[-1]):
+            if judge_two_line_intersect(car_track[track_kinds - 1], car_track[-1], people_track[track_kinds - 1],
+                                        people_track[-1]):
                 person_pass_cars_people.append([car_track[1], car_track[-1],
                                                 people_track[1], people_track[-1]])
     for person_pass_car_person in person_pass_cars_people:
@@ -163,15 +165,15 @@ def find_being_tracks(tracks, boxes):
     return real_tracks
 
 
-def judge_comity_pedestrian(img, tracks, comity_pedestrian, numbers, boxes):
+def judge_comity_pedestrian(img, tracks, comity_pedestrian, numbers, boxes, track_kinds):
     # 找当前帧存在的轨迹
     real_tracks = find_being_tracks(tracks, boxes)
     # 解出行人前沿轨迹
-    predict_people_lines, car_tracks, people_tracks = get_predict_people_lines(img, real_tracks)
+    predict_people_lines, car_tracks, people_tracks = get_predict_people_lines(img, real_tracks, track_kinds)
     # 当车压过人的前沿轨迹时，找到对应车和人
-    find_car_pass(predict_people_lines, car_tracks, comity_pedestrian)
+    find_car_pass(predict_people_lines, car_tracks, comity_pedestrian, track_kinds)
     # 当人走过车的行驶轨迹时，找到对应车和人
-    find_people_pass(people_tracks, car_tracks, comity_pedestrian)
+    find_people_pass(people_tracks, car_tracks, comity_pedestrian, track_kinds)
     # 得到最后结构
     result_cars_people = get_result_cars_people(comity_pedestrian)
     # 取消重复项

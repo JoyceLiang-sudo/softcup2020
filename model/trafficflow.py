@@ -9,13 +9,13 @@ class TrafficFlow:
 
 
 # 计算当前帧的通过个数
-def cal_traffic_count(img, reference_flow, tracks):
+def cal_traffic_count(reference_flow, tracks, track_kinds):
     to_up_flow = 0
     to_down_flow = 0
     for track in tracks:
         if track[0] != 2:
             continue
-        if len(track) < 5:
+        if len(track) < track_kinds + 1:
             continue
         if judge_two_line_intersect(reference_flow[0], reference_flow[1], track[-1], track[-2]) or track[-1][1] == \
                 reference_flow[0][1]:
@@ -47,13 +47,13 @@ def judge_time_up(time, traffic_flow_class):
     return False
 
 
-def get_traffic_flow(img, traffic_flow_class, tracks, time):
+def get_traffic_flow(img, traffic_flow_class, tracks, time, track_kinds):
     # 预置参考线
     reference_line = [[0, int(img.shape[0] / 2)], [img.shape[1], int(img.shape[0] / 2)]]
     # 判断是否到时间周期
     time_up_flag = judge_time_up(time, traffic_flow_class)
     # 计算当前帧的通过个数
-    to_up_flow, to_down_flow = cal_traffic_count(img, reference_line, tracks)
+    to_up_flow, to_down_flow = cal_traffic_count(reference_line, tracks, track_kinds)
     # 得到最终车流量
     result_flow = get_result_flow(traffic_flow_class, to_up_flow, to_down_flow, time_up_flag)
     return result_flow

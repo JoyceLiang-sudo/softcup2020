@@ -147,7 +147,10 @@ def convert_output(detections):
 def make_track(boxes, tracks):
     """
     提取中心点做轨迹
+    (类别编号，追踪编号，车牌号，所在车道，中点坐标...)
     """
+    # 车道信息（左线，右线，车道方向, 是否违规（-1违规，0未判断，1没有违规））
+    lanes_message = [[[0, 0], [0, 0]], [[0, 0], [0, 0]], 0, 0]
     for box in boxes:
         if box[5] == -1:
             continue
@@ -161,7 +164,7 @@ def make_track(boxes, tracks):
                 flag = 1
                 break
         if flag == 0:
-            track = [box[0], box[5], box[-1], box[2]]
+            track = [box[0], box[5], box[-1], lanes_message, box[2]]
             tracks.append(track)
 
 
@@ -205,7 +208,7 @@ def find_one_illegal_boxes(illegal_number, tracks):
     return possible_tracks
 
 
-def draw_result(image, boxes, data, mode=False):
+def draw_result(image, boxes, data, track_kinds, mode=False):
     """
     画出预测结果
     """
@@ -266,7 +269,7 @@ def draw_result(image, boxes, data, mode=False):
                 for track in data.tracks:
                     if box[5] != track[1]:
                         continue
-                    i = 3
+                    i = track_kinds
                     while i < len(track) - 1:
                         cv2.circle(image, track[i], 1, data.colors[box[0]], -1)
                         i = i + 1
@@ -279,31 +282,6 @@ def draw_result(image, boxes, data, mode=False):
                     cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
                 else:
                     cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
-
-
-def judge_illegal_change_lanes(tracks, lane_lines, illegal_boxes_number):
-    """
-    判断违规变道
-    """
-    illegal_cars = []
-    for track in tracks:
-        if len(track) < 5:
-            continue
-        if track[0] != 2:
-            continue
-        for line in lane_lines:
-            if judge_two_line_intersect(line[0], line[1], track[-1], track[-2]):
-                illegal_cars.append(track[1])
-                break
-    for number1 in illegal_cars:
-        flag = True
-        for number2 in illegal_boxes_number:
-            if number1 == number2:
-                flag = False
-                break
-        if flag:
-            illegal_boxes_number.append(number1)
-    return illegal_boxes_number
 
 
 # 计算斜率
@@ -357,6 +335,19 @@ def judge_point_line_position(point, line):
     if flag < 0:
         return -1
     return 1
+
+
+def judge_point_in_lines(point, line1, line2):
+    """
+    判断点是否在两个线之间
+    :param point: 判断点
+    :param line1: 线1
+    :param line2: 线2
+    :return: True-点在两条线之间，False-点不在两条线之间
+    """
+    if judge_point_line_position(point, line1) == -1 and judge_point_line_position(point, line2) == 1:
+        return True
+    return False
 
 
 def find_real_numbers(pre_numbers, now_numbers):
