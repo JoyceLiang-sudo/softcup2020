@@ -67,6 +67,9 @@ class MainWindow(Ui_Form):
         img = cv2.resize(img, (1640, 950), interpolation=cv2.INTER_LINEAR)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         self.set_image(img)
+        # 设置视频
+        self.backend.set_video_path(conf.video_path)
+        self.backend.start()
 
     def info(self, msg):
         self.show_message.append(msg)
@@ -308,8 +311,13 @@ class MainThread(QThread):
                 self.time_difference.pre_time = time.time()
             self.print_message(time_flag)
             # 显示图片
-            frame_read = cv2.resize(frame_read, (1640, 950), interpolation=cv2.INTER_LINEAR)
-            self.set_image(frame_read)
+            # frame_read = cv2.resize(frame_read, (1640, 950), interpolation=cv2.INTER_LINEAR)
+            # self.set_image(frame_read)
+            out_win = "result"
+            cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
+            cv2.imshow(out_win, frame_read)
+            if cv2.waitKey(1) == 27:
+                break
 
 
 if __name__ == "__main__":

@@ -53,6 +53,8 @@ def tracker_update(input_boxes, frame, encoder, tracker, track_label):
             bbox = track.to_tlbr()
             result_box = match_box(result_box, bbox, int(track.track_id))
         return result_box
+    else:
+        return []
 
 
 def match_box(boxes, bbox, id):
