@@ -375,3 +375,15 @@ def judge_stop(track):
         if calculate_average_deviation([track[-1], track[-2], track[-3], track[-4], track[-5]]) > 5:
             return False
         return True
+
+
+def calculate_two_point_distance(x1, y1, x2, y2):
+    """
+    计算两点间距离
+    :param x1: 点1横坐标
+    :param y1: 点1纵坐标
+    :param x2: 点2横坐标
+    :param y2: 点2纵坐标
+    :return: 距离
+    """
+    return np.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))

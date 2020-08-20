@@ -28,6 +28,7 @@ def find_lines(lines):
         for x1, y1, x2, y2 in line:
             slope = (y2 - y1) / (x2 - x1)
             if slope > 1 or slope < -0.5:
+                # print()
                 line_one = [[x1, y1], [x2, y2]]
                 lane_lines.append(line_one)
     return lane_lines
@@ -43,11 +44,13 @@ def extend_lines(img, zebra_crossing, lane_lines, points):
     line_bottom = [[0, img.shape[0]], [img.shape[1], img.shape[0]]]
     line_left = [[0, 0], [1, img.shape[0]]]
     for line in lane_lines:
-        point = get_intersection_point(reference_line, line)
+        # point = get_intersection_point(reference_line, line)
+        point = line[0]
         up_points.append(point)
-        point = get_intersection_point(line_bottom, line)
-        if point[0] < 0:
-            point = get_intersection_point(line_left, line)
+        # point = get_intersection_point(line_bottom, line)
+        point = line[1]
+        # if point[0] < 0:
+        # point = get_intersection_point(line_left, line)
         bottom_points.append(point)
     points.append(up_points)
     points.append(bottom_points)
@@ -85,6 +88,7 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, zebra_cr
                             maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     lane_lines = find_lines(lines)
+
     extend_lines(line_img, zebra_crossing, lane_lines, points)
     return lane_lines
 
@@ -113,28 +117,64 @@ def get_stop_line(img, zebra_width, zebra_crossing, lane_lines):
 
 def deal_picture(img, zebra_crossing, points, zebra_width):
     blur_k_size = 5
-    canny_l_threshold = 80
+    canny_l_threshold = 80  # 80
     canny_h_threshold = 150
     rho = 1
     theta = np.pi / 180
-    threshold = 15
-    min_line_length = 123
-    max_line_gap = 20
+    threshold = 50
+    min_line_length = 160
+    max_line_gap = 10
     x, y = img.shape[0:2]
     img = cv2.resize(img, (int(y / 2), int(x / 2)))
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    gray = deal_contours(gray)
+
+    B, G, R = cv2.split(img)
+    retval, gray_test140 = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)
+    # kernel = np.ones((7,7),np.uint8)
+    # gray_test140 = cv2.dilate(gray_test140, kernel)
+    # img_test = cv2.subtract(R, B)
+    # img_test = cv2.threshold(img_test,)
+
+    gray = deal_contours(gray_test140)
     blur_gray = cv2.GaussianBlur(gray, (blur_k_size, blur_k_size), 0, 0)
     edges = cv2.Canny(blur_gray, canny_l_threshold, canny_h_threshold)
     roi_vtx = np.array([[(0, img.shape[0]), (20, 325), (img.shape[1] - 50, 325), (img.shape[1], img.shape[0])]])
     roi_edges = roi_mask(edges, roi_vtx)
+    find_line_contours(img, roi_edges)
     lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing
                              , points)
+
     # 车道线排序
     lane_lines.sort()
 
     stop_line = get_stop_line(img, zebra_width, zebra_crossing, lane_lines)
+
+    out_win140 = "roi_edges"
+    cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
+    cv2.imshow(out_win140, roi_edges)
     return lane_lines, stop_line
+
+
+def find_line_contours(img_pre, img_deal):
+    all_contours, hierarchy = cv2.findContours(img_deal, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    i = 0
+    img_result = img_pre.copy()
+    # rects = []
+    while i < len(all_contours):
+        area = cv2.contourArea(all_contours[i])
+        if area < 300:
+            i = i + 1
+            continue
+        min_rect = cv2.minAreaRect(all_contours[i])
+        # rects.append(min_rect)
+        rect_points = cv2.boxPoints(min_rect)
+        rect_points = np.int0(rect_points)
+        cv2.drawContours(img_result, [rect_points], 0, (255, 255, 0), 2)
+        i = i + 1
+
+    out_win140 = "img_result"
+    cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
+    cv2.imshow(out_win140, img_result)
 
 
 def get_lane_lines(img, zebra_line):
@@ -211,13 +251,23 @@ def get_lanes(img, lane_lines):
 def set_lanes_message():
     """
     输入车道信息
-    0-无，1-左转，2-直行，3-右转，12-左转加直行，23-右转加直行，4-公交专用道
+    0-无，1-左转，2-直行，3-右转，12-左转加直行，23-右转加直行，4-公交专用道，5-禁止停车道
     :return:车道信息数组
     """
     lane_message = []
     lane_numbers = 3
-    lane_message.append(2)
     lane_message.append(1)
+    lane_message.append(2)
+    lane_message.append(2)
+    lane_message.append(3)
+    lane_message.append(0)
+    lane_message.append(0)
+    lane_message.append(0)
+    lane_message.append(0)
+    lane_message.append(0)
+    lane_message.append(0)
+    lane_message.append(0)
+    lane_message.append(0)
     lane_message.append(0)
     return lane_message
 
@@ -267,7 +317,7 @@ def make_tracks_lane(tracks, lanes, stop_line, lanes_message):
                 lane_message.append(lanes_message[i])
                 lane_message.append(track[3][3])
                 message.append(lane_message)
-                for j in range(4,len(track)):
+                for j in range(4, len(track)):
                     message.append(track[j])
                 message_vector.append(message)
                 break
