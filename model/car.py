@@ -2,12 +2,12 @@
 """
 车辆
 """
-import sys
 from model.util.point_util import *
 
 
 def get_speed(p1, p2, time):
-    return (calculate_distance(p1, p2) + sys.float_info.min) / time
+    ppm = 188
+    return calculate_distance(p1, p2) * time / ppm * 3.6
 
 
 def speed_measure(tracks, time, speeds, track_kinds):

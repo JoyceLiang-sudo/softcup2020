@@ -38,23 +38,23 @@ def processing(img):
     RET, binary = cv2.threshold(GRAY, 115, 255, cv2.THRESH_BINARY)
     if DEBUG:
         cv2.imshow("binary", binary)
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
     kernel = np.ones((5, 5), np.uint8)
     erodtion = cv2.erode(binary, kernel, iterations=1)
 
     if DEBUG:
         cv2.imshow("erodtion", erodtion)
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
     kernel = np.ones((5, 5), np.uint8)
     dilation = cv2.dilate(erodtion, kernel, iterations=1)
 
     if DEBUG:
         cv2.imshow("dilation", dilation)
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
     canny = cv2.Canny(dilation, 50, 150, apertureSize=3)
     if DEBUG:
         cv2.imshow("canny", canny)
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
     contours, hierarchy = cv2.findContours(canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     threshold_low = 900
 
@@ -64,7 +64,7 @@ def processing(img):
             cv2.drawContours(canny, [contours[i]], 0, 0, -1)
     if DEBUG:
         cv2.imshow("img", canny)
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
     contours, hierarchy = cv2.findContours(canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for i in range(len(contours)):
@@ -74,7 +74,7 @@ def processing(img):
             cv2.drawContours(canny, [contours[i]], 0, 0, -1)
     if DEBUG:
         cv2.imshow("img", canny)
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
     return canny
 
 
@@ -110,12 +110,12 @@ def predict(patches, DEBUG):
         if value > 1000:
             labels[index] = 1
         index += 1
-        if (DEBUG):
+        if DEBUG:
             print(h)
             print(low, high)
             print(value)
             cv2.imshow("newAmplitude", Amplitude * new_mask)
-            cv2.waitKey(1000)
+            cv2.waitKey(10)
     return labels
 
 
@@ -137,16 +137,16 @@ def get_zebra_line(img):
     weight = img.shape[1]
     Ni, Nj = (80, 902)
     low_hsv = np.array([0, 0, 0])
-    high_hsv = np.array([125, 135, 120])
+    high_hsv = np.array([125, 255, 120])
     mask = cv2.inRange(img, lowerb=low_hsv, upperb=high_hsv)
     if DEBUG:
         cv2.imshow("test", mask)
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
     gray = processing(mask)
     Amplitude, theta = get_GD(gray)
     if DEBUG:
         cv2.imshow("Amplitude", Amplitude)
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
     indices, patches = zip(*sliding_window(Amplitude, theta, patch_size=(Ni, Nj)))
     labels = predict(patches, DEBUG)
     indices = np.array(indices)
@@ -156,3 +156,13 @@ def get_zebra_line(img):
         (xmax, ymax) = location[1]
         return Zebra(xmax=xmax, xmin=xmin, ymax=ymax, ymin=ymin)
     return Zebra(0, 0, 0, 0)
+
+
+if __name__ == '__main__':
+    img = cv2.imread('../data/4.png')
+    cv2.imshow("origin", img)
+    cv2.waitKey(0)
+    zebra = get_zebra_line(img)
+    draw_zebra_line(img, zebra)
+    cv2.imshow("res", img)
+    cv2.waitKey(0)
