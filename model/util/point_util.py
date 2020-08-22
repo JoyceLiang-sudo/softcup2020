@@ -177,6 +177,8 @@ def cast_origin(boxes, origin_width, origin_height, shape):
         box[2] = (int(box[2][0] / origin_width * shape[1]), int(box[2][1] / origin_height * shape[0]))
         box[3] = (int(box[3][0] / origin_width * shape[1]), int(box[3][1] / origin_height * shape[0]))
         box[4] = (int(box[4][0] / origin_width * shape[1]), int(box[4][1] / origin_height * shape[0]))
+    # for line in lane_lines:
+    #     line[0] = [int(line[0][0] / origin_width * shape[1]),int(line[0][0] / origin_width * shape[1])]
 
 
 def print_info(boxes, time):

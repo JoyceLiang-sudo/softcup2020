@@ -14,7 +14,7 @@ def draw_stop_line(img, stop_line, color=(0, 215, 255), thickness=2):
         cv2.line(img, (stop_line[0][0], stop_line[0][1]), (stop_line[1][0], stop_line[1][1]), color, thickness)
 
 
-def draw_lane_lines(img, lane_lines, color=(0, 0, 255), thickness=2):
+def draw_lane_lines(img, lane_lines, color=(0, 0, 255), thickness=16):
     """
     画车道线
     """
@@ -28,18 +28,18 @@ def find_lines(lines):
         for x1, y1, x2, y2 in line:
             slope = (y2 - y1) / (x2 - x1)
             if slope > 0.8 or slope < -1:
-                # print()
                 line_one = [[x1, y1], [x2, y2]]
                 lane_lines.append(line_one)
     return lane_lines
 
 
-def extend_lines(img, zebra_crossing, lane_lines, points):
+def extend_lines(img, zebra_crossing, lane_lines):
     if zebra_crossing[0][1] == 0:
         reference_line = [[0, int(img.shape[0] / 5 * 3)], [img.shape[1], int(img.shape[0] / 5 * 3)]]
     else:
         reference_line = zebra_crossing
     reference_line = [[0, int(img.shape[0] / 5 * 2)], [img.shape[1], int(img.shape[0] / 5 * 2)]]
+    points = []
     up_points = []
     bottom_points = []
     line_bottom = [[0, img.shape[0]], [img.shape[1], img.shape[0]]]
@@ -84,13 +84,13 @@ def find_left_line(lane_lines):
     return left_line
 
 
-def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, zebra_crossing, points):
+def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, zebra_crossing):
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len,
                             maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     lane_lines = find_lines(lines)
     lane_lines = remove_short_lines(lane_lines)
-    extend_lines(line_img, zebra_crossing, lane_lines, points)
+    extend_lines(line_img, zebra_crossing, lane_lines)
 
     return lane_lines
 
@@ -98,9 +98,6 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, zebra_cr
 def deal_contours(img):
     contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     for contour in contours:
-        rect = cv2.minAreaRect(contours[0])
-        x, y = rect[0]
-        cv2.circle(img, (int(x), int(y)), 3, (0, 255, 0), 5)
         cv2.drawContours(img, contour, -1, (255, 255, 0), 3)
     return img
 
@@ -117,7 +114,7 @@ def get_stop_line(img, zebra_width, zebra_crossing, lane_lines):
     return real_stop_line
 
 
-def deal_picture(img, zebra_crossing, points, zebra_width, template_img, init_flag):
+def deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag):
     blur_k_size = 5
     canny_l_threshold = 80  # 80
     canny_h_threshold = 150
@@ -132,25 +129,24 @@ def deal_picture(img, zebra_crossing, points, zebra_width, template_img, init_fl
     retval, gray_test140 = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
     # kernel = np.ones((3, 3), np.uint8)
     # gray_test140 = cv2.dilate(gray_test140, kernel)
-
     gray = deal_contours(gray_test140)
     blur_gray = cv2.GaussianBlur(gray, (blur_k_size, blur_k_size), 0, 0)
     edges = cv2.Canny(blur_gray, canny_l_threshold, canny_h_threshold)
-    roi_vtx = np.array([[(0, img.shape[0]), (20, 325), (img.shape[1] - 50, 325), (img.shape[1], img.shape[0])]])
+    roi_vtx = np.array([[(0, img.shape[0]), (0, int(img.shape[0] / 2)), (img.shape[1], int(img.shape[0] / 2)),
+                         (img.shape[1], img.shape[0])]])
     roi_edges = roi_mask(edges, roi_vtx)
     if init_flag:
         corners_message = find_line_contours(img, gray_test140, template_img)
 
-    lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing
-                             , points)
-
+    lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing)
     # 车道线排序
     lane_lines.sort()
+
     stop_line = get_stop_line(img, zebra_width, zebra_crossing, lane_lines)
 
-    # out_win140 = "gray_test140"
+    # out_win140 = "roi_img"
     # cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
-    # cv2.imshow(out_win140, gray_test140)
+    # cv2.imshow(out_win140, roi_img)
 
     if init_flag:
         return lane_lines, stop_line, corners_message
@@ -199,18 +195,18 @@ def find_line_contours(img_pre, img_deal, template_imgs_list):
     return corners_message
 
 
-def get_lane_lines(img, zebra_line, template_img, lane_lines, init_flag):
+def get_lane_lines(img, zebra_line, template_img, init_flag):
     find_src = img.copy()
-    points = []
     zebra_width = zebra_line.ymax - zebra_line.ymin
     point1 = [0, (zebra_line.ymax + zebra_line.ymin) / 4]
     point2 = [img.shape[1], (zebra_line.ymax + zebra_line.ymin) / 4]
     zebra_crossing = [point1, point2]
     if init_flag:
-        result_lines, stop_line, corners_message = deal_picture(img, zebra_crossing, points, zebra_width, template_img, init_flag)
+        result_lines, stop_line, corners_message = deal_picture(img, zebra_crossing, zebra_width, template_img,
+                                                                init_flag)
         result_lines = find_result_lane_lines(find_src, corners_message, result_lines)
         return result_lines, stop_line
-    result_lines, stop_line = deal_picture(img, zebra_crossing, points, zebra_width, template_img, init_flag)
+    result_lines, stop_line = deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag)
     return result_lines
 
 
@@ -250,29 +246,34 @@ def make_lanes(img, lines_group):
     if len(lines_group) == 1:
         lanes.append([[lines_group[0][-1]], [[img.shape[1], 0], [img.shape[1], img.shape[0]]]])
         return lanes
-    left_line = lines_group[0][0]
+    left_line = lines_group[0]
     flag = False
     for lines in lines_group:
         if not flag:
             flag = True
             continue
-        right_line = lines[0]
+        right_line = lines
         lanes.append([left_line, right_line])
-        left_line = lines[0]
-    if img.shape[1] - right_line[1][0] > 300:
-        right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
-        lanes.append([left_line, right_line])
+        left_line = lines
+        if img.shape[1] - right_line[1][0] > 300:
+            right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
+            lanes.append([left_line, right_line])
     return lanes
 
 
-def get_lanes(img, lane_lines):
+def get_lanes(img, lane_lines, pre_lane_lines, pre_lanes, init_flag):
     """
     得到车道（每个元素包含左线，右线）
     """
     if len(lane_lines) > 0:
         lines_group = make_lines_group(lane_lines)
+        if init_flag:
+            lines_group = union_lane_lines(lines_group)
         lanes = make_lanes(img, lines_group)
+        if init_flag:
+            return lanes, lines_group
         return lanes
+    return None, None
 
 
 def set_lanes_message():
@@ -397,7 +398,7 @@ def remove_short_lines(lane_lines):
     return lane_lines
 
 
-def make_adjoin_matching(pre_lane_lines, now_lane_lines, pre_lanes, lanes):
+def make_adjoin_matching(pre_lane_lines, now_lane_lines):
     """
     进行更新车道线匹配
     :param pre_lane_lines: 之前的车道线
@@ -407,8 +408,8 @@ def make_adjoin_matching(pre_lane_lines, now_lane_lines, pre_lanes, lanes):
     result_lines = []
     for now_lane_line in now_lane_lines:
         for pre_lane_line in pre_lane_lines:
-            if np.fabs(now_lane_line[0][0] - pre_lane_line[0][0]) < 70 and np.fabs(
-                    now_lane_line[1][0] - pre_lane_line[1][0]) < 70:
+            if np.fabs(now_lane_line[0][0] - pre_lane_line[0][0]) < 50 and np.fabs(
+                    now_lane_line[1][0] - pre_lane_line[1][0]) < 50:
                 result_lines.append(now_lane_line)
                 break
     return result_lines
@@ -417,12 +418,69 @@ def make_adjoin_matching(pre_lane_lines, now_lane_lines, pre_lanes, lanes):
 def protect_lanes(pre_lane_lines, now_lane_lines, pre_lanes, now_lanes):
     """
     保护车道
+    :param now_lane_lines: 之前的车道线
+    :param pre_lane_lines: 现在的车道线
     :param pre_lanes: 之前的车道
     :param now_lanes: 现在的车道
     :return: 最终车道线，最终车道
     """
-    if now_lanes == None:
+    if now_lanes is None:
         return pre_lane_lines, pre_lanes
     if len(pre_lanes) != len(now_lanes):
         return pre_lane_lines, pre_lanes
     return now_lane_lines, now_lanes
+
+
+def union_lane_lines(lines_group):
+    result_lines = []
+    for line_group in lines_group:
+        if len(line_group) == 1:
+            result_lines.append(line_group[0])
+        elif len(line_group) == 2:
+            point1 = [int((line_group[0][0][0] + line_group[1][0][0]) / 2),
+                      int((line_group[0][0][1] + line_group[1][0][1]) / 2)]
+            point2 = [int((line_group[0][1][0] + line_group[1][1][0]) / 2),
+                      int((line_group[0][1][1] + line_group[1][1][1]) / 2)]
+            # result_line = (line_group[0] + line_group[1]) / 2
+            result_lines.append([point1, point2])
+        else:
+            now_line_group = remove_wrong_slope_lines(line_group)
+            if now_line_group is None:
+                now_line_group = line_group
+            point1, point2 = union_one_group(now_line_group)
+            result_lines.append([point1, point2])
+    return result_lines
+
+
+def union_one_group(line_group):
+    if len(line_group) == 0:
+        return [0, 0], [0, 0]
+    sum_x1 = 0
+    sum_x2 = 0
+    for line in line_group:
+        sum_x1 += line[0][0]
+        sum_x2 += line[1][0]
+    point1 = [int(sum_x1 / len(line_group)), line_group[0][0][1]]
+    point2 = [int(sum_x2 / len(line_group)), line_group[0][1][1]]
+    point1 = line_group[int(len(line_group) / 2)][0]
+    point2 = line_group[int(len(line_group) / 2)][1]
+    return point1, point2
+
+
+def remove_wrong_slope_lines(line_group):
+    result_lines = []
+    min_slope = 100
+    max_slope = 0
+    line_group_structs = []
+    for line in line_group:
+        slope = (line[1][1] - line[0][1]) / (line[1][0] - line[0][0])
+        if slope > max_slope:
+            max_slope = slope
+        if slope < min_slope:
+            min_slope = slope
+        line_group_struct = [line, slope]
+        line_group_structs.append(line_group_struct)
+    for line_group_struct in line_group_structs:
+        if line_group_struct[1] != min_slope and line_group_struct[1] != max_slope:
+            result_lines.append(line_group_struct[0])
+    return result_lines

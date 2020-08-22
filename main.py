@@ -263,9 +263,11 @@ class MainThread(QThread):
                 create_save_file()
                 self.data.zebra_line = get_zebra_line(frame_read)
                 self.data.lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line,
-                                                                                     corners, self.data.lane_lines,
+                                                                                     corners,
                                                                                      self.data.init_flag)
-                self.data.lanes = lane_line.get_lanes(frame_read, self.data.lane_lines)
+                self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
+                                                                            self.data.lane_lines, self.data.lane_lines,
+                                                                            self.data.lanes, self.data.init_flag)
                 self.data.lanes_message = lane_line.set_lanes_message()
                 # self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
                 self.traffic_flow.pre_time = time.time()
@@ -273,21 +275,16 @@ class MainThread(QThread):
                 self.data.camera_message = set_camera_message()
                 self.data.init_flag = False
 
-            lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line,
-                                                            corners, self.data.lane_lines,
-                                                            self.data.init_flag)
-            lanes = lane_line.get_lanes(frame_read, lane_lines)
+            lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line, None, self.data.init_flag)
+            lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes, True)
 
-            lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines,
-                                              self.data.lanes, lanes)
-
-            lanes = lane_line.get_lanes(frame_read, lane_lines)
+            lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
+            lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes,
+                                                       True)
             self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
                                                                   lanes)
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
-            # print(self.data.lane_lines)
-            # cv2.putText(frame_read, str(len(self.data.lanes)), (1500, 300), cv2.FONT_HERSHEY_COMPLEX, 5, [0, 255, 255], 5)
             # 调用darknet线程检测图片
             detections = self.detect_image(frame_resized)
 
