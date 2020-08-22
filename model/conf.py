@@ -16,6 +16,24 @@ conf.save_path3 = "no_comity_pedestrian/"
 conf.save_path4 = "retrograde_cars/"
 conf.save_path5 = "running_red/"
 
+# 保存模板路径
+conf.big_corner1 = "./data/big-corner1.PNG"
+conf.big_corner2 = "./data/big-corner2.PNG"
+conf.big_corner3 = "./data/big-corner3.PNG"
+conf.big_corner4 = "./data/big-corner4.PNG"
+conf.big_corner5 = "./data/big-corner5.PNG"
+
+conf.mid_corner1 = "./data/mid-corner11.PNG"
+conf.mid_corner2 = "./data/mid-corner12.PNG"
+conf.mid_corner3 = "./data/mid-corner13.PNG"
+conf.mid_corner4 = "./data/mid-corner14.PNG"
+
+conf.small_corner1 = "./data/small-corner1.PNG"
+conf.small_corner2 = "./data/small-corner2.PNG"
+conf.small_corner3 = "./data/small-corner3.PNG"
+
+conf.straight_line = "./data/straight-line.PNG"
+
 # yolo配置文件
 conf.cfg_path = './data/SoftCup.cfg'
 conf.weight_path = './data/SoftCup.weights'

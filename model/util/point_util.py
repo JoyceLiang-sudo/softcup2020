@@ -295,10 +295,15 @@ def get_slope(point1, point2):
 
 # 判断两条线段相交
 def judge_two_line_intersect(p1, p2, p3, p4):
-    flag1 = (p2[0] - p1[0]) * (p4[1] - p1[1]) - (p2[1] - p1[1]) * (p4[0] - p1[0])
-    flag2 = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])
-    flag3 = (p4[0] - p3[0]) * (p2[1] - p3[1]) - (p4[1] - p3[1]) * (p2[0] - p3[0])
-    flag4 = (p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])
+    # flag1 = (p2[0] - p1[0]) * (p4[1] - p1[1]) - (p2[1] - p1[1]) * (p4[0] - p1[0])
+    # flag2 = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])
+    # flag3 = (p4[0] - p3[0]) * (p2[1] - p3[1]) - (p4[1] - p3[1]) * (p2[0] - p3[0])
+    # flag4 = (p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])
+
+    flag1 = ((p2[0] - p1[0]) * (p4[1] - p1[1]) - (p2[1] - p1[1]) * (p4[0] - p1[0])) * 0.001
+    flag2 = ((p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])) * 0.001
+    flag3 = ((p4[0] - p3[0]) * (p2[1] - p3[1]) - (p4[1] - p3[1]) * (p2[0] - p3[0])) * 0.001
+    flag4 = ((p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])) * 0.001
     if flag1 * flag2 < 0 and flag3 * flag4 < 0:
         return True
     return False
@@ -386,4 +391,53 @@ def calculate_two_point_distance(x1, y1, x2, y2):
     :param y2: 点2纵坐标
     :return: 距离
     """
-    return np.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))
+    return np.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+
+
+def calculate_extremum_side(rect, side_kind):
+    """
+    计算矩形极值边
+    :param rect:输入矩形
+    :param side_kind:需要得到边的种类，True-长边，False-短边
+    :return: 极值矩形边长度
+    """
+    rect_points = cv2.boxPoints(rect)
+    rect_points = np.int0(rect_points)
+    side1 = calculate_distance(rect_points[0], rect_points[1])
+    side2 = calculate_distance(rect_points[1], rect_points[2])
+    lone_side = side1 if side1 > side2 else side2
+    short_side = side1 if side1 < side2 else side2
+    if side_kind:
+        return lone_side
+    return short_side
+
+
+def calculate_extremum_lines(lines):
+    max_length = 0
+    # longest_line = [[0, 0], [0, 0]]
+    for line in lines:
+        length = calculate_distance(line[0], line[1])
+        if length > max_length:
+            max_length = length
+    return max_length
+
+
+# def judge_line_in_rect(line, tl, br):
+#     line
+
+
+def template_demo(template_img, src_img):
+    """
+    模板匹配
+    :param template_img: 截取图像
+    :param src_img: 原图像
+    :return: tl-左上点，br-右下点
+    """
+    # method = cv2.TM_SQDIFF_NORMED
+    method = cv2.TM_CCORR_NORMED
+    th, tw = template_img.shape[:2]
+    result = cv2.matchTemplate(src_img, template_img, method)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    tl = max_loc
+    br = (tl[0] + tw, tl[1] + th)
+    return tl, br

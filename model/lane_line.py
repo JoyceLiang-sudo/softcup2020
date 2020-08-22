@@ -27,7 +27,7 @@ def find_lines(lines):
     for line in lines:
         for x1, y1, x2, y2 in line:
             slope = (y2 - y1) / (x2 - x1)
-            if slope > 1 or slope < -0.5:
+            if slope > 0.8 or slope < -1:
                 # print()
                 line_one = [[x1, y1], [x2, y2]]
                 lane_lines.append(line_one)
@@ -39,18 +39,19 @@ def extend_lines(img, zebra_crossing, lane_lines, points):
         reference_line = [[0, int(img.shape[0] / 5 * 3)], [img.shape[1], int(img.shape[0] / 5 * 3)]]
     else:
         reference_line = zebra_crossing
+    reference_line = [[0, int(img.shape[0] / 5 * 2)], [img.shape[1], int(img.shape[0] / 5 * 2)]]
     up_points = []
     bottom_points = []
     line_bottom = [[0, img.shape[0]], [img.shape[1], img.shape[0]]]
     line_left = [[0, 0], [1, img.shape[0]]]
     for line in lane_lines:
-        # point = get_intersection_point(reference_line, line)
-        point = line[0]
+        point = get_intersection_point(reference_line, line)
+        # point = line[0]
         up_points.append(point)
-        # point = get_intersection_point(line_bottom, line)
-        point = line[1]
-        # if point[0] < 0:
-        # point = get_intersection_point(line_left, line)
+        point = get_intersection_point(line_bottom, line)
+        # point = line[1]
+        if point[0] < 0:
+            point = get_intersection_point(line_left, line)
         bottom_points.append(point)
     points.append(up_points)
     points.append(bottom_points)
@@ -88,8 +89,9 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, zebra_cr
                             maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     lane_lines = find_lines(lines)
-
+    lane_lines = remove_short_lines(lane_lines)
     extend_lines(line_img, zebra_crossing, lane_lines, points)
+
     return lane_lines
 
 
@@ -115,76 +117,101 @@ def get_stop_line(img, zebra_width, zebra_crossing, lane_lines):
     return real_stop_line
 
 
-def deal_picture(img, zebra_crossing, points, zebra_width):
+def deal_picture(img, zebra_crossing, points, zebra_width, template_img, init_flag):
     blur_k_size = 5
     canny_l_threshold = 80  # 80
     canny_h_threshold = 150
     rho = 1
     theta = np.pi / 180
-    threshold = 50
-    min_line_length = 160
-    max_line_gap = 10
+    threshold = 20
+    min_line_length = 130
+    max_line_gap = 40
     x, y = img.shape[0:2]
     img = cv2.resize(img, (int(y / 2), int(x / 2)))
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-    B, G, R = cv2.split(img)
-    retval, gray_test140 = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)
-    # kernel = np.ones((7,7),np.uint8)
+    retval, gray_test140 = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
+    # kernel = np.ones((3, 3), np.uint8)
     # gray_test140 = cv2.dilate(gray_test140, kernel)
-    # img_test = cv2.subtract(R, B)
-    # img_test = cv2.threshold(img_test,)
 
     gray = deal_contours(gray_test140)
     blur_gray = cv2.GaussianBlur(gray, (blur_k_size, blur_k_size), 0, 0)
     edges = cv2.Canny(blur_gray, canny_l_threshold, canny_h_threshold)
     roi_vtx = np.array([[(0, img.shape[0]), (20, 325), (img.shape[1] - 50, 325), (img.shape[1], img.shape[0])]])
     roi_edges = roi_mask(edges, roi_vtx)
-    find_line_contours(img, roi_edges)
+    if init_flag:
+        corners_message = find_line_contours(img, gray_test140, template_img)
+
     lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing
                              , points)
 
     # 车道线排序
     lane_lines.sort()
-
     stop_line = get_stop_line(img, zebra_width, zebra_crossing, lane_lines)
 
-    out_win140 = "roi_edges"
-    cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
-    cv2.imshow(out_win140, roi_edges)
+    # out_win140 = "gray_test140"
+    # cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
+    # cv2.imshow(out_win140, gray_test140)
+
+    if init_flag:
+        return lane_lines, stop_line, corners_message
     return lane_lines, stop_line
 
 
-def find_line_contours(img_pre, img_deal):
+def find_line_contours(img_pre, img_deal, template_imgs_list):
     all_contours, hierarchy = cv2.findContours(img_deal, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    i = 0
     img_result = img_pre.copy()
-    # rects = []
-    while i < len(all_contours):
+    rects = []
+    for i in range(0, len(all_contours)):
         area = cv2.contourArea(all_contours[i])
-        if area < 300:
-            i = i + 1
-            continue
         min_rect = cv2.minAreaRect(all_contours[i])
-        # rects.append(min_rect)
+        long_side = calculate_extremum_side(min_rect, True)
+        short_side = calculate_extremum_side(min_rect, False)
         rect_points = cv2.boxPoints(min_rect)
         rect_points = np.int0(rect_points)
-        cv2.drawContours(img_result, [rect_points], 0, (255, 255, 0), 2)
-        i = i + 1
+        mid_point = (rect_points[0] + rect_points[2]) / 2
+        if area < 1000 or area > 30000:
+            continue
+        if long_side > short_side * 4:
+            continue
+        if mid_point[1] < img_pre.shape[0] / 2:
+            continue
+        rects.append(min_rect)
+    if len(rects) < 3:
+        template_imgs = template_imgs_list[3]
+    elif len(rects) < 4:
+        template_imgs = template_imgs_list[2]
+    elif len(rects) < 8:
+        template_imgs = template_imgs_list[0]
+    else:
+        template_imgs = template_imgs_list[1]
+    corners_message = []
+    for template_img in template_imgs:
+        tl, br = template_demo(template_img, img_result)
+        tl = [tl[0] * 2, tl[1] * 2]
+        br = [br[0] * 2, br[1] * 2]
+        corner_message = [tl, br]
+        corners_message.append(corner_message)
+    # for corner_message in corners_message:
+    #     cv2.rectangle(img_result, corner_message[0]/2, corner_message[1]/2, (0, 0, 255), 2)
+    # out_win140 = "img_result"
+    # cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
+    # cv2.imshow(out_win140, img_result)
+    return corners_message
 
-    out_win140 = "img_result"
-    cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
-    cv2.imshow(out_win140, img_result)
 
-
-def get_lane_lines(img, zebra_line):
+def get_lane_lines(img, zebra_line, template_img, lane_lines, init_flag):
+    find_src = img.copy()
     points = []
     zebra_width = zebra_line.ymax - zebra_line.ymin
     point1 = [0, (zebra_line.ymax + zebra_line.ymin) / 4]
     point2 = [img.shape[1], (zebra_line.ymax + zebra_line.ymin) / 4]
     zebra_crossing = [point1, point2]
-    lane_lines, stop_line = deal_picture(img, zebra_crossing, points, zebra_width)
-    return lane_lines, stop_line
+    if init_flag:
+        result_lines, stop_line, corners_message = deal_picture(img, zebra_crossing, points, zebra_width, template_img, init_flag)
+        result_lines = find_result_lane_lines(find_src, corners_message, result_lines)
+        return result_lines, stop_line
+    result_lines, stop_line = deal_picture(img, zebra_crossing, points, zebra_width, template_img, init_flag)
+    return result_lines
 
 
 def cal_distance(x1, y1, x2, y2):
@@ -323,3 +350,79 @@ def make_tracks_lane(tracks, lanes, stop_line, lanes_message):
                 break
     now_tracks.extend(message_vector)
     return now_tracks
+
+
+def find_result_lane_lines(img, corners_message, lane_lines):
+    """
+    筛出不符合位置条件的车道线，得到最终结果
+    :param corners_message: 车道角点信息
+    :param lane_lines: 原车道线
+    :return: 最终车道线
+    """
+    if len(corners_message) < 2:
+        return lane_lines
+    result_lines = []
+    for line in lane_lines:
+        for corner_message in corners_message:
+            line_top = [[corner_message[0][0], corner_message[0][1]], [corner_message[1][0], corner_message[0][1]]]
+            line_bottom = [[corner_message[0][0], corner_message[1][1]], [corner_message[1][0], corner_message[1][1]]]
+            flag1 = judge_two_line_intersect(line_top[0], line_top[1], line[0], line[1])
+            if line_bottom[1][1] > img.shape[0]:
+                flag2 = False
+            else:
+                flag2 = judge_two_line_intersect(line_bottom[0], line_bottom[1], line[0], line[1])
+            # flag2 = judge_two_line_intersect(line_bottom[0], line_bottom[1], line[0], line[1])
+            if flag1 or flag2:
+                result_lines.append(line)
+                break
+    return result_lines
+
+
+def remove_short_lines(lane_lines):
+    """
+    去除较短的车道线
+    :param lane_lines: 车道线
+    :return: 结果车道线
+    """
+    result_lines = []
+    max_length = 0
+    for line in lane_lines:
+        length = calculate_two_point_distance(line[0][0], line[0][1], line[1][0], line[1][1])
+        if length > max_length:
+            max_length = length
+    for line in lane_lines:
+        length = calculate_two_point_distance(line[0][0], line[0][1], line[1][0], line[1][1])
+        if length > max_length * 0.1:
+            result_lines.append(line)
+    return lane_lines
+
+
+def make_adjoin_matching(pre_lane_lines, now_lane_lines, pre_lanes, lanes):
+    """
+    进行更新车道线匹配
+    :param pre_lane_lines: 之前的车道线
+    :param now_lane_lines: 现在的车道线
+    :return: 最终的车道线
+    """
+    result_lines = []
+    for now_lane_line in now_lane_lines:
+        for pre_lane_line in pre_lane_lines:
+            if np.fabs(now_lane_line[0][0] - pre_lane_line[0][0]) < 70 and np.fabs(
+                    now_lane_line[1][0] - pre_lane_line[1][0]) < 70:
+                result_lines.append(now_lane_line)
+                break
+    return result_lines
+
+
+def protect_lanes(pre_lane_lines, now_lane_lines, pre_lanes, now_lanes):
+    """
+    保护车道
+    :param pre_lanes: 之前的车道
+    :param now_lanes: 现在的车道
+    :return: 最终车道线，最终车道
+    """
+    if now_lanes == None:
+        return pre_lane_lines, pre_lanes
+    if len(pre_lanes) != len(now_lanes):
+        return pre_lane_lines, pre_lanes
+    return now_lane_lines, now_lanes
