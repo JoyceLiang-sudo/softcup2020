@@ -11,7 +11,7 @@ from model import lane_line
 from model.darknet.process import darknet_process
 from model.deep_sort.process import deep_sort_process
 from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes, \
-    find_lane_lines_position_range
+    find_lane_lines_position_range, supplement_lose_lane_lines
 from model.plate import plate_process
 from model.car import speed_measure, draw_speed_info
 from model.util.point_util import *
@@ -279,6 +279,37 @@ class MainThread(QThread):
             #     self.time_difference.pre_time = time.time()
             #     self.data.camera_message = set_camera_message()
             #     self.data.init_flag = False
+            if self.data.init_flag:
+                print('Image size: [' + str(frame_read.shape[1]) + ',' + str(frame_read.shape[0]) + ']')
+                create_save_file()
+                # 斑马线识别
+                self.data.zebra_line = get_zebra_line(frame_read)
+                # 车道线识别
+                self.data.lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line,
+                                                                                     corners,
+                                                                                     self.data.init_flag)
+                # 车道识别
+                self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
+                                                                            self.data.lane_lines, self.data.lane_lines,
+                                                                            self.data.lanes, self.data.init_flag)
+                # 解算车道线范围
+                self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
+                    self.data.lane_lines, frame_read.shape[1])
+                # 获得车道信息
+                self.data.lanes_message = lane_line.set_lanes_message()
+                # # 检测违停区域
+                # self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
+                # 获得时间
+                self.traffic_flow.pre_time = time.time()
+                # 获得时间
+                self.time_difference.pre_time = time.time()
+                # 获得相机参数
+                self.data.camera_message = set_camera_message()
+                # 标志位改置
+                self.data.init_flag = False
+
+            lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line, None, self.data.init_flag)
+            lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes, True)
 
             # lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line, None, self.data.init_flag)
             # lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes, True)
@@ -291,6 +322,19 @@ class MainThread(QThread):
             #                                                       lanes)
             # self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
             #     self.data.lane_lines, frame_read.shape[1])
+            lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
+            # lane_lines_position_range, lane_lines_spaces = find_lane_lines_position_range(lane_lines,
+            #                                                                               frame_read.shape[1])
+            # new_lane_lines = supplement_lose_lane_lines(self.data.lane_lines, lane_lines,
+            #                                             self.data.lane_lines_position_range,
+            #                                             self.data.lane_lines_spaces, lane_lines_spaces)
+            lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes,
+                                                       True)
+
+            self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
+                                                                  lanes)
+            self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
+                self.data.lane_lines, frame_read.shape[1])
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
             # 调用darknet线程检测图片

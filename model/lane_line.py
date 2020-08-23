@@ -503,83 +503,85 @@ def find_lane_lines_position_range(lane_lines, img_width):
             range_right = img_width
             position_range.append([range_left, range_right])
             break
-        spaces.append([[lane_lines[i + 1][0][0] - lane_lines[i][0][0]], [lane_lines[i + 1][1][0] - lane_lines[i][1][0]]])
+        spaces.append(
+            [lane_lines[i + 1][0][0] - lane_lines[i][0][0], lane_lines[i + 1][1][0] - lane_lines[i][1][0]])
         range_right = lane_lines[i][0][0] + int((lane_lines[i + 1][0][0] - lane_lines[i][0][0]) / 2)
         position_range.append([range_left, range_right])
         range_left = range_right
     return position_range, spaces
 
 
-def supplement_lose_lane_lines(lane_lines, lane_lines_range):
+def supplement_lose_lane_lines(pre_lane_lines, lane_lines, lane_lines_range, pre_spaces, spaces):
     """
     补全丢失的车道线
+    :param pre_spaces: 之前的车道线间距
+    :param pre_lane_lines: 之前的车道线
+    :param spaces: 车道线间距
     :param lane_lines: 车道线
     :param lane_lines_range: 车道线范围
     :return: 最终车道线
     """
-    lane_lines_struct, lose_count = find_lose_lane_lines(lane_lines, lane_lines_range)
-    if lose_count != 1:
+    lane_lines_struct, lose_count = find_lose_lane_lines(pre_lane_lines, lane_lines, lane_lines_range)
+    if lose_count != 1 or len(lane_lines_struct) < 3:
         return lane_lines
-    nearest_two_lines = find_nearest_two_lines(lane_lines_struct)
-    opposite_position = find_opposite_position(lane_lines_struct, lose_lane_lines, nearest_two_lines)
-    result_lane_lines = supplement_lane_lines(lane_lines_struct, lose_lane_lines, nearest_two_lines, opposite_position)
+    nearest_two_lines, pre_two_spaces, now_two_spaces, is_mid = find_nearest_two_lines(lane_lines_struct, pre_spaces,
+                                                                                       spaces)
+    opposite_space = calculate_opposite_space(pre_two_spaces, now_two_spaces, is_mid)
+    opposite_position = find_opposite_position(lane_lines_struct, nearest_two_lines, opposite_space)
+    result_lane_lines = supplement_lane_lines(lane_lines_struct, lane_lines, opposite_position)
     return result_lane_lines
 
 
-def find_lose_lane_lines(lane_lines, lane_lines_range):
+def find_lose_lane_lines(pre_lane_lines, lane_lines, lane_lines_range):
     """
     找到丢失的车道线
+    :param pre_lane_lines: 之前的车道线
     :param lane_lines: 现在的车道线
     :param lane_lines_range: 车道线位置范围
     :return: 新的车道线结构体（包含车道线和是否丢失，True-存在，False-丢失）,丢失车道线个数
     """
     lane_lines_struct = []
     count = 0
-    for i in range(0, len(lane_lines)):
+    for i in range(0, len(lane_lines_range)):
         flag = False
-        for line_range in lane_lines_range:
-            if line_range[0] < lane_lines[i][0][0] < line_range[1]:
-                lane_lines_struct.append([lane_lines[i], True])
+        for line in lane_lines:
+            if lane_lines_range[i][0] < line[0][0] < lane_lines_range[i][1]:
+                lane_lines_struct.append([pre_lane_lines[i], True])
                 flag = True
                 break
         if not flag:
-            lane_lines_struct.append([lane_lines[i], False])
+            lane_lines_struct.append([pre_lane_lines[i], False])
             count += 1
     return lane_lines_struct, count
 
 
-def find_nearest_two_lines(lane_lines_struct):
+def find_nearest_two_lines(lane_lines_struct, pre_spaces, spaces):
     """
     找到对应车道线最近的两个车道线
     :param lane_lines_struct: 车道线结构体
-    :return: 最近车道线下标[[n1,n2],......]
+    :param pre_spaces:
+    :param spaces: 车道线间距
+    :return: 最近车道线下标[n1,n2]
     """
     nearest_two_lines = []
     for i in range(0, len(lane_lines_struct)):
         if lane_lines_struct[i][1]:
             continue
         if i == 0 or i == len(lane_lines_struct) - 1:
-            two_lines = find_mid_nearest_two_lines(lane_lines_struct, i)
-            nearest_two_lines.append(two_lines)
-            continue
-        two_lines = find_margin_nearest_two_lines(lane_lines_struct, i)
-        nearest_two_lines.append(two_lines)
+            two_lines, pre_two_spaces, now_two_spaces = find_margin_nearest_two_lines(lane_lines_struct, i, pre_spaces,
+                                                                                      spaces)
+            nearest_two_lines = two_lines
+            is_mid = False
+            break
+        two_lines, pre_two_spaces, now_two_spaces = find_mid_nearest_two_lines(lane_lines_struct, i, pre_spaces,
+                                                                               spaces)
+        nearest_two_lines = two_lines
+        is_mid = True
         break
-    # for i in range(0, len(lane_lines)):
-    #     for lose_line in lose_lane_lines:
-    #         if i != lose_line:
-    #             continue
-    #         if i == 0 or i == len(lane_lines) - 1:
-    #             two_lines = find_mid_nearest_two_lines(lane_lines, lose_lane_lines, i)
-    #             nearest_two_lines.append(two_lines)
-    #             break
-    #         two_lines = find_margin_nearest_two_lines(lane_lines, lose_lane_lines, i)
-    #         nearest_two_lines.append(two_lines)
-    #         break
-    return nearest_two_lines
+    return nearest_two_lines, pre_two_spaces, now_two_spaces, is_mid
 
 
-def find_mid_nearest_two_lines(lane_lines_struct, subscript):
+def find_mid_nearest_two_lines(lane_lines_struct, subscript, pre_spaces, spaces):
     """
     找到丢失车道线为中间线时的最近两条线
     :param subscript: 下标
@@ -589,19 +591,27 @@ def find_mid_nearest_two_lines(lane_lines_struct, subscript):
     nearest_line1 = 0
     nearest_line2 = 0
     find_flag = False
+    print("lane_lines_struct")
+    print(lane_lines_struct)
     for i in range(0, len(lane_lines_struct)):
         if lane_lines_struct[i][1]:
             if not find_flag:
                 nearest_line1 = i
+                space1 = pre_spaces[i]
+                now_space = spaces[i]
             else:
                 nearest_line2 = i
+                space2 = pre_spaces[i]
+                break
             continue
         if i == subscript:
             find_flag = True
-    return [nearest_line1, nearest_line2]
+    print("space1")
+    print(space1)
+    return [nearest_line1, nearest_line2], [space1, space2], now_space
 
 
-def find_margin_nearest_two_lines(lane_lines_struct, subscript):
+def find_margin_nearest_two_lines(lane_lines_struct, subscript, pre_spaces, spaces):
     """
     找到丢失车道线为边缘线时的最近两条线
     :param subscript: 下标
@@ -619,27 +629,70 @@ def find_margin_nearest_two_lines(lane_lines_struct, subscript):
                     find_flag = True
                 else:
                     nearest_line2 = i
-    return [nearest_line1, nearest_line2]
+        return [nearest_line1, nearest_line2], [[pre_spaces[0][0], pre_spaces[0][0] + pre_spaces[1][0]],
+                                                [pre_spaces[0][1], pre_spaces[0][1] + pre_spaces[1][1]]], [spaces[0],
+                                                                                                           spaces[1]]
+
+    space1 = [pre_spaces[len(lane_lines_struct) - 3][0] + pre_spaces[len(lane_lines_struct) - 2][0],
+              pre_spaces[len(lane_lines_struct) - 3][1] + pre_spaces[len(lane_lines_struct) - 2][1]]
+    space2 = [pre_spaces[len(lane_lines_struct) - 2][0], pre_spaces[len(lane_lines_struct) - 2][1]]
+    return [len(lane_lines_struct) - 3, len(lane_lines_struct) - 2], [space1, space2], \
+           [spaces[len(lane_lines_struct) - 3][0], spaces[len(lane_lines_struct) - 3][1]]
 
 
-def find_opposite_position(lane_lines, lose_lane_lines, nearest_two_lines):
+def find_opposite_position(lane_lines_struct, nearest_two_lines, opposite_space):
     """
     找到丢失车道线与最近的车道线的相对位置
-    :param lane_lines: 车道线
-    :param lose_lane_lines: 丢失车道线
-    :param nearest_two_lines: 最近车道线
-    :return: 相对位置
+    :param lane_lines_struct: 车道线结构体
+    :param opposite_space: 相对间距
+    :return: 相对位置线
     """
-    return []
+    nearest_lines = []
+    for i in range(0, len(lane_lines_struct)):
+        if not lane_lines_struct[i][1]:
+            lose_line = lane_lines_struct[i][0]
+        if i == nearest_two_lines[0]:
+            nearest_line1 = lane_lines_struct[i][0]
+        if i == nearest_two_lines[1]:
+            nearest_line2 = lane_lines_struct[i][0]
+    result_line = [[nearest_line1[0][0] + opposite_space[0], nearest_line1[0][1]],
+                   [nearest_line1[1][0] + opposite_space[1], nearest_line1[1][1]]]
+    return result_line
 
 
-def supplement_lane_lines(lane_lines, lose_lane_lines, nearest_two_lines, opposite_position):
+def calculate_opposite_space(pre_spaces, now_space, is_mid):
+    print("now_space")
+    print(now_space)
+    if is_mid:
+        # print("pre_spaces[0][0]")
+        # print(pre_spaces[0][0])
+        # print("now_space")
+        # print(now_space)
+        # print("pre_spaces[0][0] * now_space[0][0]")
+        # print(pre_spaces[0][0] * now_space[0][0])
+        # print("pre_spaces[0][0] + pre_spaces[1][0]")
+        # print(pre_spaces[0][0] + pre_spaces[1][0])
+        space1 = pre_spaces[0][0] * now_space[0] / (pre_spaces[0][0] + pre_spaces[1][0])
+        space2 = pre_spaces[0][1] * now_space[1] / (pre_spaces[0][1] + pre_spaces[1][1])
+        # print(space1)
+        return [int(space1), int(space2)]
+    space1 = pre_spaces[0][0] * now_space[0] / (pre_spaces[0][0] - pre_spaces[1][0])
+    space2 = pre_spaces[0][1] * now_space[1] / (pre_spaces[0][1] - pre_spaces[1][1])
+    return [int(space1), int(space2)]
+
+
+def supplement_lane_lines(lane_lines_struct, lane_lines, opposite_position):
     """
-    完成补全车道线
-    :param opposite_position: 相对位置
+    补全所有的车道线
+    :param lane_lines_struct: 车道线结构体
     :param lane_lines: 车道线
-    :param lose_lane_lines: 丢失的车道线下标
-    :param nearest_two_lines: 最近车道线下标
-    :return:
+    :param opposite_position: 相对位置线
+    :return: 最终车道线
     """
-    return []
+    result_lines = []
+    for i in range(0, len(lane_lines_struct)):
+        if not lane_lines_struct[i][1]:
+            result_lines.append(lane_lines[i])
+            continue
+        result_lines.append(opposite_position)
+    return result_lines
