@@ -261,36 +261,36 @@ class MainThread(QThread):
                 self.warn("加载视频失败！")
                 continue
 
-            if self.data.init_flag:
-                print('Image size: [' + str(frame_read.shape[1]) + ',' + str(frame_read.shape[0]) + ']')
-                create_save_file()
-                self.data.zebra_line = get_zebra_line(frame_read)
-                self.data.lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line,
-                                                                                     corners,
-                                                                                     self.data.init_flag)
-                self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
-                                                                            self.data.lane_lines, self.data.lane_lines,
-                                                                            self.data.lanes, self.data.init_flag)
-                self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
-                    self.data.lane_lines, frame_read.shape[1])
-                self.data.lanes_message = lane_line.set_lanes_message()
-                # self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
-                self.traffic_flow.pre_time = time.time()
-                self.time_difference.pre_time = time.time()
-                self.data.camera_message = set_camera_message()
-                self.data.init_flag = False
+            # if self.data.init_flag:
+            #     print('Image size: [' + str(frame_read.shape[1]) + ',' + str(frame_read.shape[0]) + ']')
+            #     create_save_file()
+            #     self.data.zebra_line = get_zebra_line(frame_read)
+            #     self.data.lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line,
+            #                                                                          corners,
+            #                                                                          self.data.init_flag)
+            #     self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
+            #                                                                 self.data.lane_lines, self.data.lane_lines,
+            #                                                                 self.data.lanes, self.data.init_flag)
+            #     self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
+            #         self.data.lane_lines, frame_read.shape[1])
+            #     self.data.lanes_message = lane_line.set_lanes_message()
+            #     # self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
+            #     self.traffic_flow.pre_time = time.time()
+            #     self.time_difference.pre_time = time.time()
+            #     self.data.camera_message = set_camera_message()
+            #     self.data.init_flag = False
 
-            lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line, None, self.data.init_flag)
-            lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes, True)
-
-            lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
-            lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes,
-                                                       True)
-
-            self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
-                                                                  lanes)
-            self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
-                self.data.lane_lines, frame_read.shape[1])
+            # lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line, None, self.data.init_flag)
+            # lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes, True)
+            #
+            # lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
+            # lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes,
+            #                                            True)
+            #
+            # self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
+            #                                                       lanes)
+            # self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
+            #     self.data.lane_lines, frame_read.shape[1])
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
             # 调用darknet线程检测图片
@@ -305,21 +305,21 @@ class MainThread(QThread):
             # 把识别框映射为输入图片大小
             cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
 
-            # 红绿灯的颜色放在box最后面
-            boxes = traffic_light(boxes, frame_read)
+            # # 红绿灯的颜色放在box最后面
+            # boxes = traffic_light(boxes, frame_read)
 
-            # # 车牌识别
-            # self.get_license_plate(boxes, frame_read)
-            #
-            # # 制作轨迹
-            # make_track(boxes, self.data.tracks)
-            #
+            # 车牌识别
+            self.get_license_plate(boxes, frame_read)
+
+            # 制作轨迹
+            make_track(boxes, self.data.tracks)
+
             # # 匹配车道
             # self.data.tracks = make_tracks_lane(self.data.tracks, self.data.lanes, self.data.stop_line,
             #                                     self.data.lanes_message)
             #
-            # # 计算速度
-            # speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
+            # 计算速度
+            speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
             #
             # # 检测礼让行人
             # self.data.no_comity_pedestrian_cars_number = \
@@ -353,7 +353,7 @@ class MainThread(QThread):
             #                                                               self.data.illegal_parking_numbers,
             #                                                               self.data.tracks_kinds)
             # 保存违规车辆图片
-            save_illegal_car(frame_read, self.data, boxes)
+            # save_illegal_car(frame_read, self.data, boxes)
 
             # corners_message = []
             # for template_img in corners:
@@ -365,21 +365,20 @@ class MainThread(QThread):
             # 画出预测结果
             # print(self.data.lane_lines)
             draw_result(frame_read, boxes, self.data, self.data.tracks_kinds)
-            draw_zebra_line(frame_read, self.data.zebra_line)
-            draw_lane_lines(frame_read, self.data.lane_lines)
-            draw_stop_line(frame_read, self.data.stop_line)
+            # draw_zebra_line(frame_read, self.data.zebra_line)
+            # draw_lane_lines(frame_read, self.data.lane_lines)
+            # draw_stop_line(frame_read, self.data.stop_line)
             # 画车速
-            # draw_speed_info(frame_read, self.data.speeds, boxes)
+            draw_speed_info(frame_read, self.data.speeds, boxes)
             # for track in self.data.tracks:
             #     if track[3][3] == -1:
             #         cv2.circle(frame_read, track[-1], 5, [0, 0, 255], 5)
             # 打印预测信息
-            print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / (time.time() - prev_time)))
-            time_flag = False
-            if time.time() - self.time_difference.pre_time > 3:
-                time_flag = True
-                self.time_difference.pre_time = time.time()
-            self.print_message(time_flag)
+            # time_flag = False
+            # if time.time() - self.time_difference.pre_time > 3:
+            #     time_flag = True
+            #     self.time_difference.pre_time = time.time()
+            # self.print_message(time_flag)
             # 显示图片
             # frame_read = cv2.resize(frame_read, (1640, 950), interpolation=cv2.INTER_LINEAR)
             # self.set_image(frame_read)

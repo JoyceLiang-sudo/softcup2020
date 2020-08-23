@@ -36,7 +36,7 @@ conf.straight_line = "./data/straight-line.PNG"
 
 # yolo配置文件
 conf.cfg_path = './data/SoftCup.cfg'
-conf.weight_path = './data/SoftCup.weights'
+conf.weight_path = './data/SoftCup_final.weights'
 conf.radar_data_path = './data/SoftCup.data'
 conf.names_path = './data/SoftCup.names'
 
@@ -56,7 +56,7 @@ for physical_device in physical_devices:
 # deep sort 的配置文件
 conf.trackerConf = edict()
 
-conf.trackerConf.track_label = [2, 3, 4]  # 追踪器要追踪的标签号
+conf.trackerConf.track_label = [2, 6, 7, 13]  # 追踪器要追踪的标签号
 conf.trackerConf.max_cosine_distance = 0.3
 conf.trackerConf.nn_budget = None
 conf.trackerConf.nms_max_overlap = 0.7
