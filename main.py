@@ -10,7 +10,8 @@ from PySide2.QtWidgets import QApplication, QFileDialog
 from model import lane_line
 from model.darknet.process import darknet_process
 from model.deep_sort.process import deep_sort_process
-from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes
+from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes, \
+    find_lane_lines_position_range
 from model.plate import plate_process
 from model.car import speed_measure, draw_speed_info
 from model.util.point_util import *
@@ -34,6 +35,8 @@ class Data(object):
         self.tracks_kinds = 5  # 轨迹数组变量种类
         self.illegal_boxes_number = []  # 违规变道车的追踪编号
         self.lane_lines = []  # 车道线
+        self.lane_lines_position_range = []  # 车道线的位置范围
+        self.lane_lines_spaces = []  # 车道线间距
         self.lanes_message = []  # 车道信息（从左到右）
         self.stop_line = []  # 停车线
         self.lanes = []  # 车道
@@ -268,6 +271,8 @@ class MainThread(QThread):
                 self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
                                                                             self.data.lane_lines, self.data.lane_lines,
                                                                             self.data.lanes, self.data.init_flag)
+                self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
+                    self.data.lane_lines, frame_read.shape[1])
                 self.data.lanes_message = lane_line.set_lanes_message()
                 # self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
                 self.traffic_flow.pre_time = time.time()
@@ -281,8 +286,11 @@ class MainThread(QThread):
             lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
             lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes,
                                                        True)
+
             self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
                                                                   lanes)
+            self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
+                self.data.lane_lines, frame_read.shape[1])
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
             # 调用darknet线程检测图片
@@ -366,6 +374,7 @@ class MainThread(QThread):
             #     if track[3][3] == -1:
             #         cv2.circle(frame_read, track[-1], 5, [0, 0, 255], 5)
             # 打印预测信息
+            print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / (time.time() - prev_time)))
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:
                 time_flag = True
