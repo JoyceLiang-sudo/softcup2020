@@ -20,10 +20,10 @@ def get_predict_people_lines(img, tracks, track_kinds):
             continue
         if calculate_distance(track[track_kinds - 1], track[-1]) < 50:
             continue
-        if track[0] == 2:
+        if track[0] == 13:
             car_tracks.append(track)
             continue
-        if track[0] == 4:
+        if track[0] == 7 or track[0] == 2:
             people_tracks.append(track)
             predict_people_line = get_predict_people_line(img, track, track_kinds)
             predict_people_lines.append(predict_people_line)
