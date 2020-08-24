@@ -216,6 +216,8 @@ def draw_result(image, boxes, data, track_kinds):
     """
 
     for box in boxes:
+        if box[0] == 14:
+            continue
         box_color = data.colors[box[0]]
         box_thick = 3
         for number in data.illegal_boxes_number:

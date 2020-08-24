@@ -6,7 +6,10 @@ import tensorflow as tf
 conf = edict()
 
 # 视频路径，为0则打开内置摄像头
-conf.video_path = "./data/大路口.mp4"
+# conf.video_path = "./data/直线马路.mp4"
+conf.video_path = "./data/小路口.mp4"
+# conf.video_path = "./data/中路口.mp4"
+# conf.video_path = "./data/大路口.mp4"
 
 # 保存文件路径
 conf.save_path = "./save_img/"
@@ -36,7 +39,7 @@ conf.straight_line = "./data/straight-line.PNG"
 
 # yolo配置文件
 conf.cfg_path = './data/SoftCup.cfg'
-conf.weight_path = './data/SoftCup_final.weights'
+conf.weight_path = './data/SoftCup_best.weights'
 conf.radar_data_path = './data/SoftCup.data'
 conf.names_path = './data/SoftCup.names'
 

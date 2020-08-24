@@ -75,16 +75,3 @@ def match_box(boxes, bbox, id):
     # i = find_min(boxes, temp)
     # boxes[i][5] = id
     return boxes
-
-
-def deep_sort_process(pipe):
-    """
-    车牌识别进程
-    """
-    encoder, tracker = init_deep_sort()
-    while True:
-        message = pipe.recv()
-        if message[2]:
-            encoder, tracker = init_deep_sort()
-        res = tracker_update(message[0], message[1], encoder, tracker, conf.trackerConf.track_label)
-        pipe.send(res)

@@ -4,19 +4,19 @@ from PySide2 import QtGui
 
 import sys
 from multiprocessing import Process, Pipe
-from PySide2.QtCore import Signal, QObject, QThread
+from PySide2.QtCore import Signal, QThread
 from PySide2.QtWidgets import QApplication, QFileDialog
 
 from model import lane_line
-from model.darknet.process import darknet_process
-from model.deep_sort.process import deep_sort_process
+from model.deep_sort.process import init_deep_sort, tracker_update
 from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes, \
     find_lane_lines_position_range, supplement_lose_lane_lines
 from model.plate import plate_process
 from model.car import speed_measure, draw_speed_info
 from model.util.point_util import *
 from model.conf import conf
-from model.zebra import Zebra, get_zebra_line, draw_zebra_line
+from model.zebra import Zebra
+from model.darknet import darknet
 from model.comitypedestrian import judge_comity_pedestrian, ComityPedestrian
 from model.trafficflow import get_traffic_flow, TrafficFlow
 from model.retrograde import get_retrograde_cars
@@ -42,7 +42,7 @@ class Data(object):
         self.lanes = []  # 车道
         self.illegal_area = []  # 违停区域
         self.illegal_parking_numbers = []  # 违停车辆编号
-        self.zebra_line = Zebra(0, 0, 0, 0)  # 斑马线
+        self.zebra_line = Zebra(None, None)  # 斑马线
         self.speeds = []  # 速度信息
         self.traffic_flow = 0  # 车流量
         self.init_flag = True  # 首次运行标志位
@@ -134,8 +134,6 @@ def read_small_corners():
     return small_corners
 
 
-# def read_symbols():
-
 class MainThread(QThread):
     message_info = Signal(str)
     message_warn = Signal(str)
@@ -148,17 +146,16 @@ class MainThread(QThread):
         self.comity_pedestrian = ComityPedestrian()
         self.traffic_flow = TrafficFlow()
         self.time_difference = TimeDifference()
-        self.restart_flag = True
         self.cap = None
 
-        # darknet进程
+        # darknet
         print('Loading yolo model...')
-        darknet_parent_pipe, darknet_child_pipe = Pipe()
-        yolo_process = Process(target=darknet_process, args=(darknet_child_pipe,))
-        yolo_process.start()
-        self.darknet_pipe = darknet_parent_pipe
-        self.darknet_image_width = self.darknet_pipe.recv()
-        self.darknet_image_height = self.darknet_pipe.recv()
+        self.netMain = darknet.load_net_custom(conf.cfg_path.encode("ascii"), conf.weight_path.encode("ascii"), 0, 1)
+        self.metaMain = darknet.load_meta(conf.radar_data_path.encode("ascii"))
+        self.darknet_image_width = darknet.network_width(self.netMain)
+        self.darknet_image_height = darknet.network_height(self.netMain)
+        self.darknet_image = darknet.make_image(self.darknet_image_width, self.darknet_image_height, 3)
+
         print('Yolo image size: [' + str(self.darknet_image_width) + ',' + str(self.darknet_image_height) + ']')
         print('Load yolo model success!')
 
@@ -170,12 +167,9 @@ class MainThread(QThread):
         self.plate_pipe = plate_parent_pipe
         print('Load license plate model success!')
 
-        # 追踪器进程
+        # 追踪器
         print('Loading deep sort...')
-        tracker_parent_pipe, tracker_child_pipe = Pipe()
-        tracker_process = Process(target=deep_sort_process, args=(tracker_child_pipe,))
-        tracker_process.start()
-        self.tracker_pipe = tracker_parent_pipe
+        self.encoder, self.tracker = init_deep_sort()
         print('Load deep sort success!')
 
     def info(self, msg):
@@ -193,7 +187,7 @@ class MainThread(QThread):
         self.comity_pedestrian = ComityPedestrian()
         self.traffic_flow = TrafficFlow()
         self.time_difference = TimeDifference()
-        self.restart_flag = True
+        self.encoder, self.tracker = init_deep_sort()
 
     def print_message(self, time_flag):
         """
@@ -231,24 +225,6 @@ class MainThread(QThread):
                 if len(res) > 0 and res[0][1] > 0.6:
                     box[6] = str(res[0][0])
 
-    def update_tracker(self, boxes, image, restart_flag):
-        """
-        更新追踪器
-        """
-        if restart_flag:
-            self.restart_flag = False
-        self.tracker_pipe.send([boxes, image, restart_flag])
-        res = self.tracker_pipe.recv()
-        return res
-
-    def detect_image(self, image):
-        """
-        darknet检测图片
-        """
-        self.darknet_pipe.send(image)
-        detections = self.darknet_pipe.recv()
-        return detections
-
     def set_video_path(self, video_path):
         self.cap = cv2.VideoCapture(video_path)
 
@@ -282,21 +258,19 @@ class MainThread(QThread):
             if self.data.init_flag:
                 print('Image size: [' + str(frame_read.shape[1]) + ',' + str(frame_read.shape[0]) + ']')
                 create_save_file()
-                # 斑马线识别
-                self.data.zebra_line = get_zebra_line(frame_read)
-                # 车道线识别
-                self.data.lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line,
-                                                                                     corners,
-                                                                                     self.data.init_flag)
-                # 车道识别
-                self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
-                                                                            self.data.lane_lines, self.data.lane_lines,
-                                                                            self.data.lanes, self.data.init_flag)
-                # 解算车道线范围
-                self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
-                    self.data.lane_lines, frame_read.shape[1])
-                # 获得车道信息
-                self.data.lanes_message = lane_line.set_lanes_message()
+                # # 车道线识别
+                # self.data.lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line,
+                #                                                                      corners,
+                #                                                                      self.data.init_flag)
+                # # 车道识别
+                # self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
+                #                                                             self.data.lane_lines, self.data.lane_lines,
+                #                                                             self.data.lanes, self.data.init_flag)
+                # # 解算车道线范围
+                # self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
+                #     self.data.lane_lines, frame_read.shape[1])
+                # # 获得车道信息
+                # self.data.lanes_message = lane_line.set_lanes_message()
                 # # 检测违停区域
                 # self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
                 # 获得时间
@@ -308,8 +282,8 @@ class MainThread(QThread):
                 # 标志位改置
                 self.data.init_flag = False
 
-            lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line, None, self.data.init_flag)
-            lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes, True)
+            # lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line, None, self.data.init_flag)
+            # lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes, True)
 
             # lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line, None, self.data.init_flag)
             # lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes, True)
@@ -322,34 +296,39 @@ class MainThread(QThread):
             #                                                       lanes)
             # self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
             #     self.data.lane_lines, frame_read.shape[1])
-            lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
+            # lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
             # lane_lines_position_range, lane_lines_spaces = find_lane_lines_position_range(lane_lines,
             #                                                                               frame_read.shape[1])
             # new_lane_lines = supplement_lose_lane_lines(self.data.lane_lines, lane_lines,
             #                                             self.data.lane_lines_position_range,
             #                                             self.data.lane_lines_spaces, lane_lines_spaces)
-            lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes,
-                                                       True)
-
-            self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
-                                                                  lanes)
-            self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
-                self.data.lane_lines, frame_read.shape[1])
+            # lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, self.data.lane_lines, self.data.lanes,
+            #                                            True)
+            #
+            # self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
+            #                                                       lanes)
+            # self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
+            #     self.data.lane_lines, frame_read.shape[1])
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
-            # 调用darknet线程检测图片
-            detections = self.detect_image(frame_resized)
+            # 检测图片
+            darknet.copy_image_from_bytes(self.darknet_image, frame_resized.tobytes())
+            # 类别编号  置信度 (x,y,w,h)
+            detections = darknet.detect_image(self.netMain, self.metaMain, self.darknet_image, thresh=conf.thresh)
 
             # 类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
             boxes = convert_output(detections)
 
             # 更新tracker
-            boxes = self.update_tracker(boxes, frame_resized, self.restart_flag)
+            boxes = tracker_update(boxes, frame_resized, self.encoder, self.tracker, conf.trackerConf.track_label)
 
             # 把识别框映射为输入图片大小
             cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
 
-            # # 红绿灯的颜色放在box最后面
+            # 斑马线识别
+            self.data.zebra_line.get_zebra_line(boxes, frame_read.shape)
+
+            # 红绿灯的颜色放在box最后面
             # boxes = traffic_light(boxes, frame_read)
 
             # 车牌识别
@@ -409,7 +388,7 @@ class MainThread(QThread):
             # 画出预测结果
             # print(self.data.lane_lines)
             draw_result(frame_read, boxes, self.data, self.data.tracks_kinds)
-            # draw_zebra_line(frame_read, self.data.zebra_line)
+            self.data.zebra_line.draw_zebra_line(frame_read)
             # draw_lane_lines(frame_read, self.data.lane_lines)
             # draw_stop_line(frame_read, self.data.stop_line)
             # 画车速
@@ -418,6 +397,7 @@ class MainThread(QThread):
             #     if track[3][3] == -1:
             #         cv2.circle(frame_read, track[-1], 5, [0, 0, 255], 5)
             # 打印预测信息
+            print_info(boxes, time.time() - prev_time)
             # time_flag = False
             # if time.time() - self.time_difference.pre_time > 3:
             #     time_flag = True
