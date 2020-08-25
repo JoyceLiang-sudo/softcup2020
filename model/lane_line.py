@@ -177,16 +177,16 @@ def find_line_contours(img_pre, img_deal, template_imgs_list):
             continue
         if long_side > short_side * 4:
             continue
-        if mid_point[1] < img_pre.shape[0] / 2:
-            continue
+        # if mid_point[1] < img_pre.shape[0] / 2:
+        #     continue
         rects.append(min_rect)
-    # print("rects")
-    # print(len(rects))
-    if len(rects) == 0:  # 0
+    print("rects")
+    print(len(rects))
+    if len(rects) == 3:  # 0
         template_imgs = template_imgs_list[3]
-    elif len(rects) == 2:  # 2
+    elif len(rects) == 13:  # 2
         template_imgs = template_imgs_list[2]
-    elif len(rects) == 4:  # 6
+    elif len(rects) == 18:  # 6
         template_imgs = template_imgs_list[0]
     elif len(rects) == 8:  # 8
         template_imgs = template_imgs_list[1]
@@ -389,9 +389,9 @@ def find_result_lane_lines(img, corners_message, lane_lines, zebra_lines):
     if len(corners_message) == 0:
         return lane_lines
     find_img = img.copy()
-    out_win = "find_img"
-    cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
-    cv2.imshow(out_win, find_img)
+    # out_win = "find_img"
+    # cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
+    # cv2.imshow(out_win, find_img)
     # if len(corners_message) < 2:
     #     return lane_lines
     result_lines = []

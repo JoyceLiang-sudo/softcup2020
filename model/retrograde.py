@@ -47,7 +47,7 @@ def judge_run_direction(line_slope, track, lane_lines, track_kinds):
 def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds):
     retrograde_numbers = []
     for track in tracks:
-        if track[0] != 2:
+        if track[0] != 13:
             continue
         if len(track) < track_kinds:
             continue

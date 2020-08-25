@@ -13,7 +13,7 @@ def cal_traffic_count(reference_flow, tracks, track_kinds):
     to_up_flow = 0
     to_down_flow = 0
     for track in tracks:
-        if track[0] != 2:
+        if track[0] != 13:
             continue
         if len(track) < track_kinds + 1:
             continue
