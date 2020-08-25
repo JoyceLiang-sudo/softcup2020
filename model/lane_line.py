@@ -18,8 +18,9 @@ def draw_lane_lines(img, lane_lines, color=(0, 0, 255), thickness=16):
     """
     画车道线
     """
-    for line in lane_lines:
-        cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), color, thickness)
+    if lane_lines is not None:
+        for line in lane_lines:
+            cv2.line(img, (line[0][0], line[0][1]), (line[1][0], line[1][1]), color, thickness)
 
 
 def find_lines(lines):
@@ -182,13 +183,13 @@ def find_line_contours(img_pre, img_deal, template_imgs_list):
         rects.append(min_rect)
     print("rects")
     print(len(rects))
-    if len(rects) == 3:  # 0
-        template_imgs = template_imgs_list[3]
-    elif len(rects) == 13:  # 2
+    # if len(rects) == 3:  # 0
+    #     template_imgs = template_imgs_list[3]
+    if len(rects) == 14:  # 2
         template_imgs = template_imgs_list[2]
     elif len(rects) == 18:  # 6
         template_imgs = template_imgs_list[0]
-    elif len(rects) == 8:  # 8
+    elif len(rects) == 13:  # 8
         template_imgs = template_imgs_list[1]
     else:
         return []
@@ -207,7 +208,7 @@ def find_line_contours(img_pre, img_deal, template_imgs_list):
     return corners_message
 
 
-def get_lane_lines(img, zebra_line, template_img, init_flag):
+def get_lane_lines(img, zebra_line, template_img, init_flag, boxes):
     find_src = img.copy()
     if zebra_line is None:
         zebra_width = img.shape[1]
@@ -218,6 +219,8 @@ def get_lane_lines(img, zebra_line, template_img, init_flag):
     point2 = [img.shape[1], (zebra_line[3][1] + zebra_line[2][1]) / 4]
     zebra_crossing = [point1, point2]
     if init_flag:
+        # print("lane_lines")
+        # print(lane_lines)
         result_lines, stop_line, corners_message = deal_picture(img, zebra_crossing, zebra_width, template_img,
                                                                 init_flag)
         result_lines = find_result_lane_lines(find_src, corners_message, result_lines, zebra_line)
@@ -264,16 +267,30 @@ def make_lanes(img, lines_group):
         return lanes
     left_line = lines_group[0]
     flag = False
-    for lines in lines_group:
+    for i in range(0, len(lines_group)):
         if not flag:
             flag = True
             continue
-        right_line = lines
+        right_line = lines_group[i]
         lanes.append([left_line, right_line])
-        left_line = lines
-        if img.shape[1] - right_line[1][0] < 300:
-            right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
-            lanes.append([left_line, right_line])
+        left_line = lines_group[i]
+        if i == len(lines_group) - 1:
+            if right_line[1][1] == img.shape[0]:
+                right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
+                lanes.append([left_line, right_line])
+        # if img.shape[1] - right_line[1][0] < 300:
+        #     right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
+        #     lanes.append([left_line, right_line])
+    # for lines in lines_group:
+    #     if not flag:
+    #         flag = True
+    #         continue
+    #     right_line = lines
+    #     lanes.append([left_line, right_line])
+    #     left_line = lines
+    #     if img.shape[1] - right_line[1][0] < 300:
+    #         right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
+    #         lanes.append([left_line, right_line])
     return lanes
 
 
@@ -281,6 +298,7 @@ def get_lanes(img, lane_lines, init_flag):
     """
     得到车道（每个元素包含左线，右线）
     """
+    print("in")
     if len(lane_lines) > 0:
         lines_group = make_lines_group(lane_lines)
         # lines_group = union_lane_lines(lines_group)
@@ -299,7 +317,8 @@ def set_lanes_message(boxes, lanes):
     0-无，1-左转，2-直行，3-右转，12-左转加直行，23-右转加直行，4-公交专用道，5-禁止停车道
     :return:车道信息数组
     """
-
+    if lanes is None:
+        return []
     if len(lanes) == 0:
         return []
     if len(lanes) == 1:
@@ -386,8 +405,8 @@ def find_result_lane_lines(img, corners_message, lane_lines, zebra_lines):
     :param lane_lines: 原车道线
     :return: 最终车道线
     """
-    if len(corners_message) == 0:
-        return lane_lines
+    # if len(corners_message) == 0:
+    #     return lane_lines
     find_img = img.copy()
     # out_win = "find_img"
     # cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)

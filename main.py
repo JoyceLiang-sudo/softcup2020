@@ -68,9 +68,9 @@ class MainWindow(Ui_Form):
         img = cv2.resize(img, (1640, 950), interpolation=cv2.INTER_LINEAR)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         self.set_image(img)
-        # 设置视频
-        self.backend.set_video_path(conf.video_path)
-        self.backend.start()
+        # # 设置视频
+        # self.backend.set_video_path(conf.video_path)
+        # self.backend.start()
 
     def info(self, msg):
         self.show_message.append(msg)
@@ -195,7 +195,8 @@ class MainThread(QThread):
                           find_one_illegal_boxes(self.data.illegal_parking_numbers, self.data.tracks),
                           find_one_illegal_boxes(self.data.running_car[1], self.data.tracks),
                           find_one_illegal_boxes(self.data.illegal_boxes_number, self.data.tracks),
-                          find_one_illegal_boxes(self.data.no_comity_pedestrian_cars_number, self.data.tracks)]
+                          find_one_illegal_boxes(self.data.no_comity_pedestrian_cars_number, self.data.tracks),
+                          find_one_illegal_boxes(self.data.illegal_person_number, self.data.tracks)]
         if time_flag:
             self.info("车流量：" + str(self.data.traffic_flow) + "个/分钟")
             self.print_plate(self.data.tracks)
@@ -204,6 +205,7 @@ class MainThread(QThread):
             self.print_one_illegal_boxes(illegal_tracks[2], '闯红灯')
             self.print_one_illegal_boxes(illegal_tracks[3], '违规变道')
             self.print_one_illegal_boxes(illegal_tracks[4], '不礼让行人')
+            self.print_one_illegal_boxes(illegal_tracks[5], '横穿马路')
 
     def print_one_illegal_boxes(self, one_illegal_track, illegal_name):
         if len(one_illegal_track) > 0:
@@ -265,7 +267,7 @@ class MainThread(QThread):
                 # 车道线识别
                 self.data.lane_lines, self.data.stop_line = \
                     lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, corners,
-                                             self.data.init_flag)
+                                             self.data.init_flag, boxes)
                 # 车道识别
                 self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
                                                                             self.data.lane_lines, self.data.init_flag)
@@ -285,19 +287,19 @@ class MainThread(QThread):
                 # 标志位改置
                 self.data.init_flag = False
 
-            lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, None,
-                                                  self.data.init_flag)
-            lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
-            lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
+            # lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, None,
+            #                                       self.data.init_flag)
+            # lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
+            # lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
             # #lane_lines_position_range, lane_lines_spaces = find_lane_lines_position_range(lane_lines,
             # #                                                                              frame_read.shape[1])
             # #new_lane_lines = supplement_lose_lane_lines(self.data.lane_lines, lane_lines,
             #                                             self.data.lane_lines_position_range,
             #                                             self.data.lane_lines_spaces, lane_lines_spaces)
-            lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
-
-            self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
-                                                                  lanes)
+            # lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
+            #
+            # self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
+            #                                                       lanes)
             # self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
             #     self.data.lane_lines, frame_read.shape[1])
 
