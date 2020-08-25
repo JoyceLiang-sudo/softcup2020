@@ -252,9 +252,10 @@ class MainThread(QThread):
 
             # 把识别框映射为输入图片大小
             cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
+
             # 斑马线识别
             self.data.zebra_line.get_zebra_line(boxes, frame_read.shape)
-            # self.data.zebra.down_zebra_line
+
             if self.data.init_flag:
                 print('Image size: [' + str(frame_read.shape[1]) + ',' + str(frame_read.shape[0]) + ']')
                 create_save_file()
@@ -311,8 +312,8 @@ class MainThread(QThread):
             #                                     self.data.lanes_message)
             #
             # 计算速度
-            # speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
-            #
+            speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
+
             # 检测礼让行人
             self.data.no_comity_pedestrian_cars_number = \
                 judge_comity_pedestrian(frame_read, self.data.tracks,

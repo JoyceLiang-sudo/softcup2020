@@ -21,12 +21,17 @@ class Zebra:
 
         elif len(possible_zebra) == 1:
             # 只识别到了一根斑马线
-            distance_1 = self.up_zebra_line[0][1] - possible_zebra[0][0][1]
-            distance_2 = self.down_zebra_line[0][1] - possible_zebra[0][0][1]
-            if distance_1 > distance_2:
+            if self.up_zebra_line is None and self.down_zebra_line is not None:
+                self.up_zebra_line = possible_zebra[0]
+            elif self.up_zebra_line is None and self.down_zebra_line is None:
                 self.down_zebra_line = possible_zebra[0]
             else:
-                self.up_zebra_line = possible_zebra[0]
+                distance_1 = abs(self.up_zebra_line[0][1] - possible_zebra[0][0][1])
+                distance_2 = abs(self.down_zebra_line[0][1] - possible_zebra[0][0][1])
+                if distance_1 > distance_2:
+                    self.down_zebra_line = possible_zebra[0]
+                else:
+                    self.up_zebra_line = possible_zebra[0]
 
     def draw_zebra_line(self, img, thickness=3):
         """
