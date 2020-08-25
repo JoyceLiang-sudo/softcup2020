@@ -3,7 +3,6 @@
 一些坐标点操作的工具
 """
 from model.conf import conf
-from PIL import Image, ImageDraw
 import numpy as np
 import cv2
 
@@ -216,7 +215,7 @@ def draw_result(image, boxes, data, track_kinds):
     """
 
     for box in boxes:
-        if box[0] == 14:
+        if box[0] in conf.hide_labels:
             continue
         box_color = data.colors[box[0]]
         box_thick = 3
@@ -231,7 +230,7 @@ def draw_result(image, boxes, data, track_kinds):
                 box_thick = 10
                 break
 
-        for car_light in data.true_running_car:
+        for car_light in data.running_car[1]:
             if car_light == box[5]:
                 box_color = [230, 100, 100]
                 box_thick = 10
@@ -261,12 +260,6 @@ def draw_result(image, boxes, data, track_kinds):
                     judge_break = 1
                 if judge_break == 1:
                     break
-        # # 红绿灯
-        # if box[0] == 6 and box[6] is not None:
-        #     if box[6] == 'green':
-        #         cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-        #     else:
-        #         cv2.putText(image, box[6], box[3], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
 
 # 计算斜率

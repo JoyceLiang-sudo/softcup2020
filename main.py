@@ -24,7 +24,6 @@ from model.running_red_lights import judge_running_car
 from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
 from model.save_img import save_illegal_car, create_save_file
 from model.util.GUI import Ui_Form
-from model.detect_color import traffic_light
 from model.camera import set_camera_message
 from model.illegal_change_lanes import judge_illegal_change_lanes, judge_person_illegal_through_road
 
@@ -49,9 +48,7 @@ class Data(object):
         self.init_flag = True  # 首次运行标志位
         self.retrograde_cars_number = []  # 逆行车号
         self.no_comity_pedestrian_cars_number = []  # 不礼让行人的车号
-        self.true_running_car = []  # 闯红灯车辆的追踪编号
-        self.running_car = []
-        self.origin = []
+        self.running_car = [[], []]  # 闯红灯车辆的追踪编号
         self.camera_message = []  # 相机的相关信息
 
     class_names = get_names(conf.names_path)  # 标签名称
@@ -298,9 +295,6 @@ class MainThread(QThread):
             # self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
             #     self.data.lane_lines, frame_read.shape[1])
 
-            # 红绿灯的颜色放在box最后面
-            # boxes = traffic_light(boxes, frame_read)
-
             # 车牌识别
             self.get_license_plate(boxes, frame_read)
 
@@ -319,14 +313,11 @@ class MainThread(QThread):
                 judge_comity_pedestrian(frame_read, self.data.tracks,
                                         self.comity_pedestrian,
                                         self.data.no_comity_pedestrian_cars_number, boxes, self.data.tracks_kinds)
-            # #  检测闯红灯
-            # if boxes:
-            #     self.data.running_car, self.data.true_running_car = judge_running_car(frame_read, self.data.origin,
-            #                                                                           self.data.running_car,
-            #                                                                           boxes, self.data.tracks,
-            #                                                                           self.data.stop_line,
-            #                                                                           self.data.lane_lines,
-            #                                                                           self.data.tracks_kinds)
+
+            #  检测闯红灯
+            judge_running_car(boxes, self.data.running_car, self.data.tracks, self.data.zebra_line,
+                              self.data.tracks_kinds)
+
             # 检测违规变道
             self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_read.shape[0], self.data.tracks,
                                                                         self.data.lane_lines,
@@ -362,8 +353,8 @@ class MainThread(QThread):
             #     corners_message.append(corner_message)
             # # for corner_message in corners_message:
             # #     cv2.rectangle(frame_read, corner_message[0], corner_message[1], (0, 0, 255), 2)
+
             # 画出预测结果
-            # print(self.data.lane_lines)
             draw_result(frame_read, boxes, self.data, self.data.tracks_kinds)
             self.data.zebra_line.draw_zebra_line(frame_read)
             draw_lane_lines(frame_read, self.data.lane_lines)
