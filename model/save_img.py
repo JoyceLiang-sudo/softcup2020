@@ -32,7 +32,7 @@ def save_illegal_car(img, data, boxes):
             if box[5] == car:
                 save_in_file(img, box, "illegal_parking")
                 break
-        for car in data.true_running_car:
+        for car in data.running_car[1]:
             if box[5] == car:
                 save_in_file(img, box, "running_red")
                 break

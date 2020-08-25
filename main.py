@@ -12,7 +12,7 @@ from model.deep_sort.process import init_deep_sort, tracker_update
 from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes, \
     find_lane_lines_position_range, supplement_lose_lane_lines
 from model.plate import plate_process
-from model.car import speed_measure, draw_speed_info
+from model.car import speed_measure, draw_speed_info, show_traffic_light
 from model.util.point_util import *
 from model.conf import conf
 from model.zebra import Zebra
@@ -198,6 +198,7 @@ class MainThread(QThread):
                           find_one_illegal_boxes(self.data.no_comity_pedestrian_cars_number, self.data.tracks)]
         if time_flag:
             self.info("车流量：" + str(self.data.traffic_flow) + "个/分钟")
+            self.print_plate(self.data.tracks)
             self.print_one_illegal_boxes(illegal_tracks[0], '逆行')
             self.print_one_illegal_boxes(illegal_tracks[1], '违停')
             self.print_one_illegal_boxes(illegal_tracks[2], '闯红灯')
@@ -210,12 +211,17 @@ class MainThread(QThread):
             for track in one_illegal_track:
                 self.warn('编号（' + str(track[1]) + '），车牌号（' + str(track[2]) + '）\n')
 
+    def print_plate(self, tracks):
+        for track in tracks:
+            if track[2] is not None:
+                self.info("编号为：" + str(track[1]) + " 的车牌号为：" + track[2])
+
     def get_license_plate(self, boxes, image):
         """
         获得车牌
         """
         for box in boxes:
-            if (box[0] == 1 or box[0] == 2) and too_small(box[3], box[4]):
+            if box[0] in [6, 13] and too_small(box[3], box[4]):
                 # 截取ROI作为识别车牌的输入图片
                 roi = image[box[3][1]:box[4][1], box[3][0]:box[4][0]]
                 self.plate_pipe.send(roi)
@@ -305,7 +311,7 @@ class MainThread(QThread):
             self.data.tracks = make_tracks_lane(self.data.tracks, self.data.lanes, self.data.stop_line,
                                                 self.data.lanes_message)
 
-            # # 计算速度
+            # 计算速度
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
 
             # 检测礼让行人
@@ -354,6 +360,9 @@ class MainThread(QThread):
             # # for corner_message in corners_message:
             # #     cv2.rectangle(frame_read, corner_message[0], corner_message[1], (0, 0, 255), 2)
 
+            # 显示红绿灯
+            # show_traffic_light(frame_read, boxes)
+
             # 画出预测结果
             draw_result(frame_read, boxes, self.data, self.data.tracks_kinds)
             self.data.zebra_line.draw_zebra_line(frame_read)
@@ -361,9 +370,7 @@ class MainThread(QThread):
             draw_stop_line(frame_read, self.data.stop_line)
             # 画车速
             draw_speed_info(frame_read, self.data.speeds, boxes)
-            # for track in self.data.tracks:
-            #     if track[3][3] == -1:
-            #         cv2.circle(frame_read, track[-1], 5, [0, 0, 255], 5)
+
             # 打印预测信息
             # print_info(boxes, time.time() - prev_time)
             time_flag = False

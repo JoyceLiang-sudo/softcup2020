@@ -46,3 +46,18 @@ def draw_speed_info(image, speeds, boxes):
                 cv2.putText(image, '{:.2f}'.format(speed[2] * 1000), (speed[1][0], speed[1][1] - 30),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             1, [255, 255, 255], 2)
+
+
+def show_traffic_light(image, boxes):
+    roi = None
+    for box in boxes:
+        if box[0] in [3, 4, 8, 9, 10, 11, 12]:
+            p1 = (box[3][1] - 50 if (box[3][1] - 50 > 0) else box[3][1])
+            p2 = box[4][1] + 50
+            p3 = (box[3][0] - 50 if (box[3][0] - 50 > 0) else box[3][0])
+            p4 = box[4][0] + 50
+            # 截取ROI作为识别车牌的输入图片
+            roi = image[p1:p2, p3:p4]
+    if roi is not None:
+        cv2.imshow("traffic_light", roi)
+        cv2.waitKey(1)
