@@ -267,7 +267,7 @@ class MainThread(QThread):
                 # self.data.lane_lines_position_range, self.data.lane_lines_spaces = find_lane_lines_position_range(
                 #     self.data.lane_lines, frame_read.shape[1])
                 # 获得车道信息
-                self.data.lanes_message = lane_line.set_lanes_message()
+                self.data.lanes_message = lane_line.set_lanes_message(boxes, self.data.lanes)
                 # # 检测违停区域
                 # self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
                 # 获得时间
@@ -301,39 +301,39 @@ class MainThread(QThread):
             # 制作轨迹
             make_track(boxes, self.data.tracks)
 
-            # # 匹配车道
-            # self.data.tracks = make_tracks_lane(self.data.tracks, self.data.lanes, self.data.stop_line,
-            #                                     self.data.lanes_message)
-            #
-            # 计算速度
+            # 匹配车道
+            self.data.tracks = make_tracks_lane(self.data.tracks, self.data.lanes, self.data.stop_line,
+                                                self.data.lanes_message)
+
+            # # 计算速度
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
 
-            # 检测礼让行人
-            self.data.no_comity_pedestrian_cars_number = \
-                judge_comity_pedestrian(frame_read, self.data.tracks,
-                                        self.comity_pedestrian,
-                                        self.data.no_comity_pedestrian_cars_number, boxes, self.data.tracks_kinds)
+            # # 检测礼让行人
+            # self.data.no_comity_pedestrian_cars_number = \
+            #     judge_comity_pedestrian(frame_read, self.data.tracks,
+            #                             self.comity_pedestrian,
+            #                             self.data.no_comity_pedestrian_cars_number, boxes, self.data.tracks_kinds)
 
             #  检测闯红灯
             judge_running_car(boxes, self.data.running_car, self.data.tracks, self.data.zebra_line,
                               self.data.tracks_kinds)
 
-            # 检测违规变道
-            self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_read.shape[0], self.data.tracks,
-                                                                        self.data.lane_lines,
-                                                                        self.data.illegal_boxes_number,
-                                                                        self.data.tracks_kinds)
-            # 检测行人横穿马路
-            self.data.illegal_person_number = judge_person_illegal_through_road(self.data.tracks,
-                                                                                self.data.zebra_line.down_zebra_line,
-                                                                                self.data.tracks_kinds,
-                                                                                frame_read.shape[1])
-            # print("no_comity_pedestrian_cars_number")
-            # print(self.data.no_comity_pedestrian_cars_number)
+            # # 检测违规变道
+            # self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_read.shape[0], self.data.tracks,
+            #                                                             self.data.lane_lines,
+            #                                                             self.data.illegal_boxes_number,
+            #                                                             self.data.tracks_kinds)
+            # # 检测行人横穿马路
+            # self.data.illegal_person_number = judge_person_illegal_through_road(self.data.tracks,
+            #                                                                     self.data.zebra_line.down_zebra_line,
+            #                                                                     self.data.tracks_kinds,
+            #                                                                     frame_read.shape[1])
+            # print("illegal_boxes_number")
+            # print(self.data.illegal_boxes_number)
             # # 检测车流量
             # self.data.traffic_flow = get_traffic_flow(frame_read, self.traffic_flow, self.data.tracks, time.time(),
             #                                           self.data.tracks_kinds)
-            #
+
             # # 检测逆行车辆
             # self.data.retrograde_cars_number = get_retrograde_cars(frame_read, self.data.lane_lines, self.data.tracks,
             #                                                        self.data.retrograde_cars_number,

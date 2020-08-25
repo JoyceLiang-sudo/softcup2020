@@ -6,12 +6,11 @@ import tensorflow as tf
 conf = edict()
 
 # 视频路径，为0则打开内置摄像头
-# conf.video_path = "./data/不礼让行人2.mp4"
-conf.video_path = "./data/警车闯红灯.mp4"
+conf.video_path = "./data/不礼让行人.mp4"
 # conf.video_path = "./data/违规转弯.mp4"
-# conf.video_path = "./data/行人横穿马路.mp4"
-# conf.video_path = "./data/行人横穿马路.mp4"
-# conf.video_path = "./data/行人横穿马路.mp4"
+# conf.video_path = "./data/red.mp4"
+# conf.video_path = "./data/不礼让行人2.mp4"
+# conf.video_path = "./data/违规变道.mp4"
 # conf.video_path = "./data/直线马路.mp4"
 # conf.video_path = "./data/小路口.mp4"
 # conf.video_path = "./data/中路口.mp4"
