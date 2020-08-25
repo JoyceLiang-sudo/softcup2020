@@ -9,7 +9,7 @@ def roi_mask(img, vertices):
     return masked_img
 
 
-def draw_stop_line(img, stop_line, color=(0, 215, 255), thickness=2):
+def draw_stop_line(img, stop_line, color=(0, 215, 255), thickness=10):
     if len(stop_line) > 0:
         cv2.line(img, (stop_line[0][0], stop_line[0][1]), (stop_line[1][0], stop_line[1][1]), color, thickness)
 
@@ -141,17 +141,13 @@ def deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag):
     roi_vtx = np.array([[(0, img.shape[0]), (0, int(img.shape[0] / 2)), (img.shape[1], int(img.shape[0] / 2)),
                          (img.shape[1], img.shape[0])]])
     roi_edges = roi_mask(edges, roi_vtx)
-    # out_win140 = "gray_test140"
+    # out_win140 = "roi_edges"
     # cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
-    # cv2.imshow(out_win140, img)
+    # cv2.imshow(out_win140, roi_edges)
     # cv2.waitKey(0)
     if init_flag:
         corners_message = find_line_contours(img, gray_test140, template_img)
-        # print("corners_message")
-        # print(corners_message)
     lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing)
-    # print("len(lane_lines)")
-    # print(len(lane_lines))
     # 车道线排序
     lane_lines.sort()
 
@@ -181,13 +177,11 @@ def find_line_contours(img_pre, img_deal, template_imgs_list):
         # if mid_point[1] < img_pre.shape[0] / 2:
         #     continue
         rects.append(min_rect)
-    print("rects")
-    print(len(rects))
     # if len(rects) == 3:  # 0
     #     template_imgs = template_imgs_list[3]
     if len(rects) == 14:  # 2
         template_imgs = template_imgs_list[2]
-    elif len(rects) == 18:  # 6
+    elif len(rects) == 16:  # 6
         template_imgs = template_imgs_list[0]
     elif len(rects) == 13:  # 8
         template_imgs = template_imgs_list[1]
@@ -208,19 +202,17 @@ def find_line_contours(img_pre, img_deal, template_imgs_list):
     return corners_message
 
 
-def get_lane_lines(img, zebra_line, template_img, init_flag, boxes):
+def get_lane_lines(img, zebra_line, template_img, init_flag):
     find_src = img.copy()
     if zebra_line is None:
         zebra_width = img.shape[1]
         zebra_line = [[0, 0], [0, 0], [0, 0], [0, 0]]
     else:
-        zebra_width = zebra_line[1][0] - zebra_line[0][0]
+        zebra_width = zebra_line[3][1] - zebra_line[2][1]
     point1 = [0, (zebra_line[3][1] + zebra_line[2][1]) / 4]
     point2 = [img.shape[1], (zebra_line[3][1] + zebra_line[2][1]) / 4]
     zebra_crossing = [point1, point2]
     if init_flag:
-        # print("lane_lines")
-        # print(lane_lines)
         result_lines, stop_line, corners_message = deal_picture(img, zebra_crossing, zebra_width, template_img,
                                                                 init_flag)
         result_lines = find_result_lane_lines(find_src, corners_message, result_lines, zebra_line)
@@ -298,7 +290,6 @@ def get_lanes(img, lane_lines, init_flag):
     """
     得到车道（每个元素包含左线，右线）
     """
-    print("in")
     if len(lane_lines) > 0:
         lines_group = make_lines_group(lane_lines)
         # lines_group = union_lane_lines(lines_group)
@@ -307,8 +298,8 @@ def get_lanes(img, lane_lines, init_flag):
         lanes = make_lanes(img, lines_group)
         if init_flag:
             return lanes, lines_group
-        return lanes
-    return None, None
+        return lanes, []
+    return [], []
 
 
 def set_lanes_message(boxes, lanes):
@@ -361,7 +352,7 @@ def make_tracks_lane(tracks, lanes, stop_line, lanes_message):
         message = []
         lane_message = []
         # 如果类别不是车辆，则过滤
-        if track[0] != 2:
+        if track[0] != 13:
             now_tracks.append(t_track)
             continue
         # 如果车辆在停车线上方，则过滤
@@ -436,7 +427,6 @@ def find_result_lane_lines(img, corners_message, lane_lines, zebra_lines):
                 result_lines.append(line)
                 break
     if zebra_lines[1][0] == 0:
-        # print("in?")
         return [result_line]
     return result_lines
 
@@ -486,12 +476,6 @@ def protect_lanes(pre_lane_lines, now_lane_lines, pre_lanes, now_lanes):
     :param now_lanes: 现在的车道
     :return: 最终车道线，最终车道
     """
-    # print("len(pre_lanes)")
-    # print(len(pre_lanes))
-    # print("len(now_lanes)")
-    # print(len(now_lanes))
-    if now_lanes is None:
-        return pre_lane_lines, pre_lanes
     if len(pre_lanes) != len(now_lanes):
         return pre_lane_lines, pre_lanes
     if np.fabs(pre_lanes[-1][0][0][0] - now_lanes[-1][0][0][0]) > 100:

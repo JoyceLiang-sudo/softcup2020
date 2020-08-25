@@ -7,6 +7,7 @@ def judge_running_car(boxes, running_car, tracks, zebra, track_kinds):
     running_car[0]为 可能 闯红灯车追踪编号
     running_car[1]为 确定 闯红灯车追踪编号
     """
+
     if zebra.up_zebra_line is None or zebra.down_zebra_line is None:
         # 先确定有两条斑马线
         return

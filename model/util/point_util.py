@@ -202,7 +202,8 @@ def draw_result(image, boxes, data, track_kinds):
     """
     画出预测结果
     """
-
+    if data.tracks is None:
+        return None
     for box in boxes:
         if box[0] in conf.hide_labels:
             continue

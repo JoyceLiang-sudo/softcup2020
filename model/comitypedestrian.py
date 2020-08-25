@@ -13,6 +13,7 @@ def get_predict_people_lines(img, tracks, track_kinds):
     car_tracks = []
     people_tracks = []
     range_y_min = int(img.shape[0] / 4)
+    right_flag = False
     for track in tracks:
         if len(track) < 4 + track_kinds:
             continue
@@ -21,13 +22,15 @@ def get_predict_people_lines(img, tracks, track_kinds):
         if calculate_distance(track[track_kinds - 1], track[-1]) < 50:
             continue
         if track[0] == 13:
+            if track[3][2] == 3:
+                right_flag = True
             car_tracks.append(track)
             continue
         if track[0] == 7 or track[0] == 2:
             people_tracks.append(track)
             predict_people_line = get_predict_people_line(img, track, track_kinds)
             predict_people_lines.append(predict_people_line)
-    return predict_people_lines, car_tracks, people_tracks
+    return predict_people_lines, car_tracks, people_tracks, right_flag
 
 
 # 解出单个行人前沿轨迹
@@ -169,7 +172,8 @@ def judge_comity_pedestrian(img, tracks, comity_pedestrian, numbers, boxes, trac
     # 找当前帧存在的轨迹
     real_tracks = find_being_tracks(tracks, boxes)
     # 解出行人前沿轨迹
-    predict_people_lines, car_tracks, people_tracks = get_predict_people_lines(img, real_tracks, track_kinds)
+    predict_people_lines, car_tracks, people_tracks, right_flag = get_predict_people_lines(img, real_tracks,
+                                                                                           track_kinds)
     # 当车压过人的前沿轨迹时，找到对应车和人
     find_car_pass(predict_people_lines, car_tracks, comity_pedestrian, track_kinds)
     # 当人走过车的行驶轨迹时，找到对应车和人
@@ -178,4 +182,6 @@ def judge_comity_pedestrian(img, tracks, comity_pedestrian, numbers, boxes, trac
     result_cars_people = get_result_cars_people(comity_pedestrian)
     # 取消重复项
     result_cars_people = find_real_numbers(numbers, result_cars_people)
-    return result_cars_people
+    if right_flag:
+        return [], result_cars_people
+    return result_cars_people, []

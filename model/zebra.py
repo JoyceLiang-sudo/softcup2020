@@ -33,16 +33,16 @@ class Zebra:
                 else:
                     self.up_zebra_line = possible_zebra[0]
 
-    def draw_zebra_line(self, img, thickness=3):
+    def draw_zebra_line(self, img, thickness=10):
         """
         画斑马线
         """
         if self.down_zebra_line is not None:
             # cv2.rectangle(img, self.down_zebra_line[2], self.down_zebra_line[3], (0, 255, 0), 3)
-            cv2.line(img, self.down_zebra_line[0], self.down_zebra_line[1], (255, 255, 255), thickness)
+            cv2.line(img, self.down_zebra_line[0], self.down_zebra_line[1], (255, 200, 0), thickness)
         if self.up_zebra_line is not None:
             # cv2.rectangle(img, self.up_zebra_line[2], self.up_zebra_line[3], (0, 255, 0), 3)
-            cv2.line(img, self.up_zebra_line[0], self.up_zebra_line[1], (255, 255, 255), thickness)
+            cv2.line(img, self.up_zebra_line[0], self.up_zebra_line[1], (255, 200, 0), thickness)
 
     def get_zebra_line(self, boxes, shape):
         """

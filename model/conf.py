@@ -8,7 +8,7 @@ conf = edict()
 # 视频路径，为0则打开内置摄像头
 # conf.video_path = "./data/不礼让行人.mp4"
 # conf.video_path = "./data/逆行.mp4"
-# conf.video_path = "./data/违规转弯.mp4"
+# conf.video_path = "./data/行人横穿马路.mp4"
 conf.video_path = "./data/警车闯红灯.mp4"
 # conf.video_path = "./data/video.avi"
 # conf.video_path = "./data/不礼让行人2.mp4"
@@ -46,7 +46,7 @@ conf.straight_line = "./data/straight-line.PNG"
 
 # yolo配置文件
 conf.cfg_path = './data/SoftCup.cfg'
-conf.weight_path = './data/SoftCup_best.weights'
+conf.weight_path = './data/SoftCup_final.weights'
 conf.radar_data_path = './data/SoftCup.data'
 conf.names_path = './data/SoftCup.names'
 conf.hide_labels = [0, 1, 5, 14]  # 不在最终结果上画出来的类别编号

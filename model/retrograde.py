@@ -44,12 +44,14 @@ def judge_run_direction(line_slope, track, lane_lines, track_kinds):
     return 0
 
 
-def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds):
+def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds, stop_line):
     retrograde_numbers = []
     for track in tracks:
         if track[0] != 13:
             continue
         if len(track) < track_kinds:
+            continue
+        if track[-1][1] > stop_line[0][1]:
             continue
         if track[-1][1] < range_lines[0][0][1]:
             continue
@@ -79,7 +81,7 @@ def get_real_numbers(numbers, retrograde_numbers):
     return numbers
 
 
-def get_retrograde_cars(img, lane_lines, tracks, numbers, track_kinds):
+def get_retrograde_cars(img, lane_lines, tracks, numbers, track_kinds, stop_line):
     """
     得到逆行车辆
     """
@@ -89,6 +91,7 @@ def get_retrograde_cars(img, lane_lines, tracks, numbers, track_kinds):
         return []
     range_lines = make_range_lines(img, lane_lines)
     line_slope = get_slope(lane_lines[0][0], lane_lines[0][1])
-    retrograde_numbers = get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds)
+    retrograde_numbers = get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds,
+                                                stop_line)
     real_numbers = get_real_numbers(numbers, retrograde_numbers)
     return real_numbers

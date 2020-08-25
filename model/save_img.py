@@ -18,7 +18,7 @@ def save_illegal_car(img, data, boxes):
     """
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     for box in boxes:
-        if box[0] != 2:
+        if box[0] != 13:
             continue
         for car in data.no_comity_pedestrian_cars_number:
             if box[5] == car:

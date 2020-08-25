@@ -5,12 +5,16 @@ def judge_illegal_change_lanes(img_height, tracks, lane_lines, illegal_boxes_num
     """
     判断违规变道
     """
+    if lane_lines is None:
+        return illegal_boxes_number
     illegal_cars = []
     for track in tracks:
         judge_flag = False
         if len(track) < track_kinds + 1:
             continue
         if track[0] != 13:
+            continue
+        if track[-1][1] > 1600:
             continue
         for line in lane_lines:
             if judge_two_line_intersect(line[0], line[1], track[-1], track[-2]):
@@ -23,7 +27,7 @@ def judge_illegal_change_lanes(img_height, tracks, lane_lines, illegal_boxes_num
             continue
         if track[3][3] != 0:
             continue
-        judge_direction_wrong(img_height, track, illegal_cars)
+        # judge_direction_wrong(img_height, track, illegal_cars)
 
     for number1 in illegal_cars:
         flag = True
@@ -36,16 +40,19 @@ def judge_illegal_change_lanes(img_height, tracks, lane_lines, illegal_boxes_num
     return illegal_boxes_number
 
 
-def judge_person_illegal_through_road(tracks, zebra_crossing, track_kinds, img_width):
+def judge_person_illegal_through_road(tracks, zebra_crossing, img_width):
     illegal_person = []
     for track in tracks:
-        if track[-1][0] < int(img_width/2):
+        if track[-1][0] < int(img_width * 1 / 3):
+            continue
+        if track[-1][0] > int(img_width * 2 / 3):
             continue
         if track[0] != 7:
             continue
         if zebra_crossing is None:
             illegal_person.append(track[1])
     return illegal_person
+
 
 # def judge_person_in_zebra_crossing(point, zebra_crossing):
 
