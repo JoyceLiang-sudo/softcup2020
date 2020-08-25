@@ -75,3 +75,14 @@ def match_box(boxes, bbox, id):
     # i = find_min(boxes, temp)
     # boxes[i][5] = id
     return boxes
+
+
+def find_min(boxes, temp):
+    """
+    找到最佳匹配的框
+    """
+    while boxes[temp.index(min(temp))][5] != -1:
+        # 如果最小值已经匹配到了一个框就把它剔除
+        temp[temp.index(min(temp))] = float('inf')
+    # 返回最佳匹配的下标
+    return temp.index(min(temp))
