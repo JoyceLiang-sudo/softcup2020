@@ -66,17 +66,6 @@ def calculate_distance(p1, p2):
     return np.sqrt(pow(p1[0] - p2[0], 2) + pow(p1[1] - p2[1], 2))
 
 
-def find_min(boxes, temp):
-    """
-    找到最佳匹配的框
-    """
-    while boxes[temp.index(min(temp))][5] != -1:
-        # 如果最小值已经匹配到了一个框就把它剔除
-        temp[temp.index(min(temp))] = float('inf')
-    # 返回最佳匹配的下标
-    return temp.index(min(temp))
-
-
 def too_small(p1, p2, size=60000):
     """
     判断矩形面积是否超过下限
