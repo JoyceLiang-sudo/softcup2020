@@ -12,7 +12,7 @@ from model.deep_sort.process import init_deep_sort, tracker_update
 from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes, \
     find_lane_lines_position_range, supplement_lose_lane_lines
 from model.plate import plate_process
-from model.car import speed_measure, draw_speed_info, show_traffic_light
+from model.car import speed_measure, draw_speed_info, show_traffic_light, hypervelocity
 from model.util.point_util import *
 from model.conf import conf
 from model.zebra import Zebra
@@ -44,6 +44,7 @@ class Data(object):
         self.illegal_parking_numbers = []  # 违停车辆编号
         self.zebra_line = Zebra(None, None)  # 斑马线
         self.speeds = []  # 速度信息
+        self.over_speeds = []  # 超速车辆
         self.traffic_flow = 0  # 车流量
         self.init_flag = True  # 首次运行标志位
         self.retrograde_cars_number = []  # 逆行车号
@@ -206,17 +207,37 @@ class MainThread(QThread):
             self.print_one_illegal_boxes(illegal_tracks[3], '违规变道')
             self.print_one_illegal_boxes(illegal_tracks[4], '不礼让行人')
             self.print_one_illegal_boxes(illegal_tracks[5], '横穿马路')
+            self.print_over_speed()
 
     def print_one_illegal_boxes(self, one_illegal_track, illegal_name):
         if len(one_illegal_track) > 0:
-            self.warn(illegal_name + '车辆:\n')
+            self.warn(illegal_name + '车辆:')
             for track in one_illegal_track:
-                self.warn('编号（' + str(track[1]) + '），车牌号（' + str(track[2]) + '）\n')
+                msg = '编号为：{} 的车辆'.format(track[1])
+                if track[2] is not None:
+                    msg += '，车牌号：{}'.format(track[2])
+                self.warn(msg)
+
+    def print_over_speed(self):
+        """
+        打印超速
+        """
+        if len(self.data.over_speeds) > 0:
+            self.warn('超速车辆：')
+        for speed in self.data.over_speeds:
+            msg = '编号为：{} 的车辆 速度为：{:.2f} km/h'.format(speed[0], speed[1])
+            if speed[2] is not None:
+                msg += '，车牌号：{}'.format(speed[2])
+            self.warn(msg)
 
     def print_plate(self, tracks):
         for track in tracks:
             if track[2] is not None:
-                self.info("编号为：" + str(track[1]) + " 的车牌号为：" + track[2])
+                msg = "编号为：{} 的车牌号为：{}".format(track[1], track[2])
+                for speed in self.data.speeds:
+                    if speed[0] == track[1]:
+                        msg += ' 车速为：{:.2f} km/h'.format(speed[2])
+                self.info(msg)
 
     def get_license_plate(self, boxes, image):
         """
@@ -316,6 +337,9 @@ class MainThread(QThread):
             # 计算速度
             speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
 
+            # 判断超速
+            hypervelocity(self.data.speeds, self.data.over_speeds, boxes)
+
             # 检测礼让行人
             self.data.no_comity_pedestrian_cars_number = \
                 judge_comity_pedestrian(frame_read, self.data.tracks,
@@ -336,8 +360,6 @@ class MainThread(QThread):
                                                                                 self.data.zebra_line.down_zebra_line,
                                                                                 self.data.tracks_kinds,
                                                                                 frame_read.shape[1])
-            # print("illegal_boxes_number")
-            # print(self.data.illegal_boxes_number)
             # 检测车流量
             self.data.traffic_flow = get_traffic_flow(frame_read, self.traffic_flow, self.data.tracks, time.time(),
                                                       self.data.tracks_kinds)
@@ -375,6 +397,7 @@ class MainThread(QThread):
 
             # 打印预测信息
             # print_info(boxes, time.time() - prev_time)
+
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:
                 time_flag = True

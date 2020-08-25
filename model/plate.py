@@ -175,3 +175,13 @@ def plate_process(pipe):
         img = pipe.recv()
         res = model.recognize_plate(img)
         pipe.send(res)
+
+
+def get_plate(boxes, track_number):
+    """
+    获得对应追踪编号的车牌号
+    """
+    for box in boxes:
+        if box[5] == track_number:
+            return box[6]
+    return None

@@ -10,6 +10,7 @@ conf = edict()
 # conf.video_path = "./data/逆行.mp4"
 # conf.video_path = "./data/违规转弯.mp4"
 conf.video_path = "./data/警车闯红灯.mp4"
+# conf.video_path = "./data/video.avi"
 # conf.video_path = "./data/不礼让行人2.mp4"
 # conf.video_path = "./data/违规变道.mp4"
 # conf.video_path = "./data/直线马路.mp4"
@@ -45,10 +46,11 @@ conf.straight_line = "./data/straight-line.PNG"
 
 # yolo配置文件
 conf.cfg_path = './data/SoftCup.cfg'
-conf.weight_path = './data/SoftCup_final.weights'
+conf.weight_path = './data/SoftCup_best.weights'
 conf.radar_data_path = './data/SoftCup.data'
 conf.names_path = './data/SoftCup.names'
 conf.hide_labels = [0, 1, 5, 14]  # 不在最终结果上画出来的类别编号
+# conf.hide_labels = [14]  # 不在最终结果上画出来的类别编号
 
 # 置信度，大于此值会被判断为真
 conf.thresh = 0.3
