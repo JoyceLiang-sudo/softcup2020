@@ -1,7 +1,7 @@
 from model.util.point_util import *
 
 
-def judge_illegal_change_lanes(img_height, tracks, lane_lines, illegal_boxes_number, track_kinds):
+def judge_illegal_change_lanes(tracks, lane_lines, illegal_boxes_number, track_kinds):
     """
     判断违规变道
     """
@@ -27,7 +27,6 @@ def judge_illegal_change_lanes(img_height, tracks, lane_lines, illegal_boxes_num
             continue
         if track[3][3] != 0:
             continue
-        # judge_direction_wrong(img_height, track, illegal_cars)
 
     for number1 in illegal_cars:
         flag = True
@@ -52,9 +51,6 @@ def judge_person_illegal_through_road(tracks, zebra_crossing, img_width):
         if zebra_crossing is None:
             illegal_person.append(track[1])
     return illegal_person
-
-
-# def judge_person_in_zebra_crossing(point, zebra_crossing):
 
 
 def judge_direction_wrong(img_height, track, illegal_cars):

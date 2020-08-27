@@ -120,7 +120,7 @@ def get_stop_line(img, zebra_width, zebra_crossing, lane_lines):
     return real_stop_line
 
 
-def deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag):
+def deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag, boxes):
     blur_k_size = 5
     canny_l_threshold = 80  # 80
     canny_h_threshold = 150
@@ -132,21 +132,15 @@ def deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag):
     x, y = img.shape[0:2]
     img = cv2.resize(img, (int(y / 2), int(x / 2)))
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    retval, gray_test140 = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
-    # kernel = np.ones((3, 3), np.uint8)
-    # gray_test140 = cv2.dilate(gray_test140, kernel)
-    gray = deal_contours(gray_test140)
+    retval, gray_test = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
+    gray = deal_contours(gray_test)
     blur_gray = cv2.GaussianBlur(gray, (blur_k_size, blur_k_size), 0, 0)
     edges = cv2.Canny(blur_gray, canny_l_threshold, canny_h_threshold)
     roi_vtx = np.array([[(0, img.shape[0]), (0, int(img.shape[0] / 2)), (img.shape[1], int(img.shape[0] / 2)),
                          (img.shape[1], img.shape[0])]])
     roi_edges = roi_mask(edges, roi_vtx)
-    # out_win140 = "roi_edges"
-    # cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
-    # cv2.imshow(out_win140, roi_edges)
-    # cv2.waitKey(0)
     if init_flag:
-        corners_message = find_line_contours(img, gray_test140, template_img)
+        corners_message = find_line_contours(img, template_img, boxes)
     lane_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap, zebra_crossing)
     # 车道线排序
     lane_lines.sort()
@@ -158,51 +152,42 @@ def deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag):
     return lane_lines, stop_line
 
 
-def find_line_contours(img_pre, img_deal, template_imgs_list):
-    all_contours, hierarchy = cv2.findContours(img_deal, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    img_result = img_pre.copy()
-    rects = []
-    for i in range(0, len(all_contours)):
-        area = cv2.contourArea(all_contours[i])
-        min_rect = cv2.minAreaRect(all_contours[i])
-        long_side = calculate_extremum_side(min_rect, True)
-        short_side = calculate_extremum_side(min_rect, False)
-        rect_points = cv2.boxPoints(min_rect)
-        rect_points = np.int0(rect_points)
-        mid_point = (rect_points[0] + rect_points[2]) / 2
-        if area < 1000 or area > 30000:
+def find_line_contours(img_pre, template_imgs_list, boxes):
+    length = 0
+    for box in boxes:
+        if box[0] not in [0, 1, 5]:
             continue
-        if long_side > short_side * 4:
+        if box[2][1] < 1000:
             continue
-        # if mid_point[1] < img_pre.shape[0] / 2:
-        #     continue
-        rects.append(min_rect)
-    # if len(rects) == 3:  # 0
-    #     template_imgs = template_imgs_list[3]
-    if len(rects) == 14:  # 2
+        length += box[0]
+    if length == 6:  # 2
         template_imgs = template_imgs_list[2]
-    elif len(rects) == 16:  # 6
+    elif length == 5:  # 6
         template_imgs = template_imgs_list[0]
-    elif len(rects) == 13:  # 8
+    elif length == 1:  # 8
         template_imgs = template_imgs_list[1]
     else:
         return []
     corners_message = []
     for template_img in template_imgs:
-        tl, br = template_demo(template_img, img_result)
+        tl, br = template_demo(template_img, img_pre)
         tl = [tl[0] * 2, tl[1] * 2]
         br = [br[0] * 2, br[1] * 2]
         corner_message = [tl, br]
         corners_message.append(corner_message)
-    # for corner_message in corners_message:
-    #     cv2.rectangle(img_result, corner_message[0]/2, corner_message[1]/2, (0, 0, 255), 2)
-    # out_win140 = "img_result"
-    # cv2.namedWindow(out_win140, cv2.WINDOW_NORMAL)
-    # cv2.imshow(out_win140, img_result)
     return corners_message
 
 
-def get_lane_lines(img, zebra_line, template_img, init_flag):
+def get_lane_lines(img, zebra_line, template_img, init_flag, boxes):
+    """
+    获得车道线
+    :param img: 输入图像
+    :param zebra_line: 斑马线
+    :param template_img: 模板
+    :param init_flag: 初始化标志位
+    :param boxes: boxes
+    :return: 车道线
+    """
     find_src = img.copy()
     if zebra_line is None:
         zebra_width = img.shape[1]
@@ -214,10 +199,10 @@ def get_lane_lines(img, zebra_line, template_img, init_flag):
     zebra_crossing = [point1, point2]
     if init_flag:
         result_lines, stop_line, corners_message = deal_picture(img, zebra_crossing, zebra_width, template_img,
-                                                                init_flag)
+                                                                init_flag, boxes)
         result_lines = find_result_lane_lines(find_src, corners_message, result_lines, zebra_line)
         return result_lines, stop_line
-    result_lines, stop_line = deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag)
+    result_lines, stop_line = deal_picture(img, zebra_crossing, zebra_width, template_img, init_flag, boxes)
     return result_lines
 
 
@@ -270,19 +255,6 @@ def make_lanes(img, lines_group):
             if right_line[1][1] == img.shape[0]:
                 right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
                 lanes.append([left_line, right_line])
-        # if img.shape[1] - right_line[1][0] < 300:
-        #     right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
-        #     lanes.append([left_line, right_line])
-    # for lines in lines_group:
-    #     if not flag:
-    #         flag = True
-    #         continue
-    #     right_line = lines
-    #     lanes.append([left_line, right_line])
-    #     left_line = lines
-    #     if img.shape[1] - right_line[1][0] < 300:
-    #         right_line = [[img.shape[1], 0], [img.shape[1], img.shape[0]]]
-    #         lanes.append([left_line, right_line])
     return lanes
 
 
@@ -292,7 +264,6 @@ def get_lanes(img, lane_lines, init_flag):
     """
     if len(lane_lines) > 0:
         lines_group = make_lines_group(lane_lines)
-        # lines_group = union_lane_lines(lines_group)
         if init_flag:
             lines_group = union_lane_lines(lines_group)
         lanes = make_lanes(img, lines_group)
@@ -396,14 +367,6 @@ def find_result_lane_lines(img, corners_message, lane_lines, zebra_lines):
     :param lane_lines: 原车道线
     :return: 最终车道线
     """
-    # if len(corners_message) == 0:
-    #     return lane_lines
-    find_img = img.copy()
-    # out_win = "find_img"
-    # cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
-    # cv2.imshow(out_win, find_img)
-    # if len(corners_message) < 2:
-    #     return lane_lines
     result_lines = []
     result_line = lane_lines[0]
     max_length = 0
@@ -422,7 +385,6 @@ def find_result_lane_lines(img, corners_message, lane_lines, zebra_lines):
                 flag2 = False
             else:
                 flag2 = judge_two_line_intersect(line_bottom[0], line_bottom[1], line[0], line[1])
-            # flag2 = judge_two_line_intersect(line_bottom[0], line_bottom[1], line[0], line[1])
             if flag1 or flag2:
                 result_lines.append(line)
                 break
@@ -493,7 +455,6 @@ def union_lane_lines(lines_group):
                       int((line_group[0][0][1] + line_group[1][0][1]) / 2)]
             point2 = [int((line_group[0][1][0] + line_group[1][1][0]) / 2),
                       int((line_group[0][1][1] + line_group[1][1][1]) / 2)]
-            # result_line = (line_group[0] + line_group[1]) / 2
             result_lines.append([point1, point2])
         else:
             now_line_group = remove_wrong_slope_lines(line_group)
@@ -512,8 +473,6 @@ def union_one_group(line_group):
     for line in line_group:
         sum_x1 += line[0][0]
         sum_x2 += line[1][0]
-    # point1 = [int(sum_x1 / len(line_group)), line_group[0][0][1]]
-    # point2 = [int(sum_x2 / len(line_group)), line_group[0][1][1]]
     point1 = line_group[int(len(line_group) / 2)][0]
     point2 = line_group[int(len(line_group) / 2)][1]
     return point1, point2
@@ -578,187 +537,3 @@ def find_longest_line(lane_lines):
             result_line = line
     return result_line
 
-
-def supplement_lose_lane_lines(pre_lane_lines, lane_lines, lane_lines_range, pre_spaces, spaces):
-    """
-    补全丢失的车道线
-    :param pre_spaces: 之前的车道线间距
-    :param pre_lane_lines: 之前的车道线
-    :param spaces: 车道线间距
-    :param lane_lines: 车道线
-    :param lane_lines_range: 车道线范围
-    :return: 最终车道线
-    """
-    lane_lines_struct, lose_count = find_lose_lane_lines(pre_lane_lines, lane_lines, lane_lines_range)
-    if lose_count != 1 or len(lane_lines_struct) < 3:
-        return lane_lines
-    nearest_two_lines, pre_two_spaces, now_two_spaces, is_mid = find_nearest_two_lines(lane_lines_struct, pre_spaces,
-                                                                                       spaces)
-    opposite_space = calculate_opposite_space(pre_two_spaces, now_two_spaces, is_mid)
-    opposite_position = find_opposite_position(lane_lines_struct, nearest_two_lines, opposite_space)
-    result_lane_lines = supplement_lane_lines(lane_lines_struct, lane_lines, opposite_position)
-    return result_lane_lines
-
-
-def find_lose_lane_lines(pre_lane_lines, lane_lines, lane_lines_range):
-    """
-    找到丢失的车道线
-    :param pre_lane_lines: 之前的车道线
-    :param lane_lines: 现在的车道线
-    :param lane_lines_range: 车道线位置范围
-    :return: 新的车道线结构体（包含车道线和是否丢失，True-存在，False-丢失）,丢失车道线个数
-    """
-    lane_lines_struct = []
-    count = 0
-    for i in range(0, len(lane_lines_range)):
-        flag = False
-        for line in lane_lines:
-            if lane_lines_range[i][0] < line[0][0] < lane_lines_range[i][1]:
-                lane_lines_struct.append([pre_lane_lines[i], True])
-                flag = True
-                break
-        if not flag:
-            lane_lines_struct.append([pre_lane_lines[i], False])
-            count += 1
-    return lane_lines_struct, count
-
-
-def find_nearest_two_lines(lane_lines_struct, pre_spaces, spaces):
-    """
-    找到对应车道线最近的两个车道线
-    :param lane_lines_struct: 车道线结构体
-    :param pre_spaces:
-    :param spaces: 车道线间距
-    :return: 最近车道线下标[n1,n2]
-    """
-    nearest_two_lines = []
-    for i in range(0, len(lane_lines_struct)):
-        if lane_lines_struct[i][1]:
-            continue
-        if i == 0 or i == len(lane_lines_struct) - 1:
-            two_lines, pre_two_spaces, now_two_spaces = find_margin_nearest_two_lines(lane_lines_struct, i, pre_spaces,
-                                                                                      spaces)
-            nearest_two_lines = two_lines
-            is_mid = False
-            break
-        two_lines, pre_two_spaces, now_two_spaces = find_mid_nearest_two_lines(lane_lines_struct, i, pre_spaces,
-                                                                               spaces)
-        nearest_two_lines = two_lines
-        is_mid = True
-        break
-    return nearest_two_lines, pre_two_spaces, now_two_spaces, is_mid
-
-
-def find_mid_nearest_two_lines(lane_lines_struct, subscript, pre_spaces, spaces):
-    """
-    找到丢失车道线为中间线时的最近两条线
-    :param subscript: 下标
-    :param lane_lines_struct 车道线结构体
-    :return: 最近两条线
-    """
-    nearest_line1 = 0
-    nearest_line2 = 0
-    find_flag = False
-    j = 0
-    for i in range(0, len(lane_lines_struct)):
-        if lane_lines_struct[i][1]:
-            if not find_flag:
-                nearest_line1 = i
-                space1 = pre_spaces[j]
-                now_space = spaces[i]
-            else:
-                nearest_line2 = i
-                space2 = pre_spaces[j]
-                break
-            j += 1
-            continue
-        if i == subscript:
-            find_flag = True
-    return [nearest_line1, nearest_line2], [space1, space2], now_space
-
-
-def find_margin_nearest_two_lines(lane_lines_struct, subscript, pre_spaces, spaces):
-    """
-    找到丢失车道线为边缘线时的最近两条线
-    :param subscript: 下标
-    :param lane_lines_struct: 车道线结构体
-    :return: 最近两条线
-    """
-    find_flag = False
-    nearest_line1 = 0
-    nearest_line2 = 0
-    if subscript == 0:
-        for i in range(0, len(lane_lines_struct)):
-            if lane_lines_struct[i][1]:
-                if not find_flag:
-                    nearest_line1 = i
-                    find_flag = True
-                else:
-                    nearest_line2 = i
-        return [nearest_line1, nearest_line2], [[pre_spaces[0][0], pre_spaces[0][1]],
-                                                [pre_spaces[0][0] + pre_spaces[1][0],
-                                                 pre_spaces[0][1] + pre_spaces[1][1]]], spaces[0]
-
-    space1 = [pre_spaces[len(lane_lines_struct) - 3][0] + pre_spaces[len(lane_lines_struct) - 2][0],
-              pre_spaces[len(lane_lines_struct) - 3][1] + pre_spaces[len(lane_lines_struct) - 2][1]]
-    space2 = [pre_spaces[len(lane_lines_struct) - 2][0], pre_spaces[len(lane_lines_struct) - 2][1]]
-    return [len(lane_lines_struct) - 3, len(lane_lines_struct) - 2], [space1, space2], \
-           [spaces[len(lane_lines_struct) - 3][0], spaces[len(lane_lines_struct) - 3][1]]
-
-
-def find_opposite_position(lane_lines_struct, nearest_two_lines, opposite_space):
-    """
-    找到丢失车道线与最近的车道线的相对位置
-    :param lane_lines_struct: 车道线结构体
-    :param opposite_space: 相对间距
-    :return: 相对位置线
-    """
-    nearest_lines = []
-    for i in range(0, len(lane_lines_struct)):
-        if not lane_lines_struct[i][1]:
-            lose_line = lane_lines_struct[i][0]
-        if i == nearest_two_lines[0]:
-            nearest_line1 = lane_lines_struct[i][0]
-        if i == nearest_two_lines[1]:
-            nearest_line2 = lane_lines_struct[i][0]
-    result_line = [[nearest_line1[0][0] + opposite_space[0], nearest_line1[0][1]],
-                   [nearest_line1[1][0] + opposite_space[1], nearest_line1[1][1]]]
-    return result_line
-
-
-def calculate_opposite_space(pre_spaces, now_space, is_mid):
-    if is_mid:
-        space1 = pre_spaces[0][0] * now_space[0] / (pre_spaces[0][0] + pre_spaces[1][0])
-        space2 = pre_spaces[0][1] * now_space[1] / (pre_spaces[0][1] + pre_spaces[1][1])
-        return [int(space1), int(space2)]
-    space1 = pre_spaces[0][0] * now_space[0] / (pre_spaces[0][0] - pre_spaces[1][0])
-    space2 = pre_spaces[0][1] * now_space[1] / (pre_spaces[0][1] - pre_spaces[1][1])
-    return [int(space1), int(space2)]
-
-
-def supplement_lane_lines(lane_lines_struct, lane_lines, opposite_position):
-    """
-    补全所有的车道线
-    :param lane_lines_struct: 车道线结构体
-    :param lane_lines: 车道线
-    :param opposite_position: 相对位置线
-    :return: 最终车道线
-    """
-    result_lines = []
-    # i = 0
-    # while True:
-    #     if lane_lines_struct[i][1]:
-    #         result_lines.append(lane_lines[i])
-    #         i += 1
-    #         continue
-    #     result_lines.append(opposite_position)
-    #     if i >= len(lane_lines_struct):
-    #         break
-    j = 0
-    for i in range(0, len(lane_lines_struct)):
-        if lane_lines_struct[i][1]:
-            result_lines.append(lane_lines[j])
-            j += 1
-            continue
-        result_lines.append(opposite_position)
-    return result_lines

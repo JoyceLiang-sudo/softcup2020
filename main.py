@@ -9,10 +9,9 @@ from PySide2.QtWidgets import QApplication, QFileDialog
 
 from model import lane_line
 from model.deep_sort.process import init_deep_sort, tracker_update
-from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes, \
-    find_lane_lines_position_range, supplement_lose_lane_lines
+from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes
 from model.plate import plate_process
-from model.car import speed_measure, draw_speed_info, show_traffic_light, hypervelocity
+from model.car import speed_measure, draw_speed_info, hypervelocity
 from model.util.point_util import *
 from model.conf import conf
 from model.zebra import Zebra
@@ -21,7 +20,7 @@ from model.comitypedestrian import judge_comity_pedestrian, ComityPedestrian
 from model.trafficflow import get_traffic_flow, TrafficFlow
 from model.retrograde import get_retrograde_cars
 from model.running_red_lights import judge_running_car
-from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
+from model.illegal_parking import find_illegal_area, find_illegal_parking_cars, read_template
 from model.save_img import save_illegal_car, create_save_file
 from model.util.GUI import Ui_Form
 from model.camera import set_camera_message
@@ -70,9 +69,6 @@ class MainWindow(Ui_Form):
         img = cv2.resize(img, (1640, 950), interpolation=cv2.INTER_LINEAR)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         self.set_image(img)
-        # # 设置视频
-        # self.backend.set_video_path(conf.video_path)
-        # self.backend.start()
 
     def info(self, msg):
         self.show_message.append(msg)
@@ -86,52 +82,13 @@ class MainWindow(Ui_Form):
 
     def read_video_from_file(self):
         video_path, video_type = QFileDialog.getOpenFileName(self, '打开视频', "~", "Video Files(*.mp4 *.avi)")
-        self.backend.re_init()
         self.backend.set_video_path(video_path)
+        self.backend.init_flag = True
         self.info("读入视频成功！视频路径：" + video_path)
         self.info("加载中...")
         # 开始检测线程
         self.backend.start()
         print('Start main loop!')
-
-
-def read_template():
-    big_corners = read_big_corners()
-    mid_corners = read_mid_corners()
-    small_corners = read_small_corners()
-    straight_line = cv2.imread(conf.straight_line)
-    straight_lines = [straight_line]
-
-    corners = [big_corners, mid_corners, small_corners, straight_lines]
-    # corners = straight_lines
-    return corners
-
-
-def read_big_corners():
-    big_corner1 = cv2.imread(conf.big_corner1)
-    big_corner2 = cv2.imread(conf.big_corner2)
-    big_corner3 = cv2.imread(conf.big_corner3)
-    big_corner4 = cv2.imread(conf.big_corner4)
-    big_corner5 = cv2.imread(conf.big_corner5)
-    big_corners = [big_corner1, big_corner2, big_corner3, big_corner4, big_corner5]
-    return big_corners
-
-
-def read_mid_corners():
-    mid_corner1 = cv2.imread(conf.mid_corner1)
-    mid_corner2 = cv2.imread(conf.mid_corner2)
-    mid_corner3 = cv2.imread(conf.mid_corner3)
-    mid_corner4 = cv2.imread(conf.mid_corner4)
-    mid_corners = [mid_corner1, mid_corner2, mid_corner3, mid_corner4]
-    return mid_corners
-
-
-def read_small_corners():
-    small_corner1 = cv2.imread(conf.small_corner1)
-    small_corner2 = cv2.imread(conf.small_corner2)
-    small_corner3 = cv2.imread(conf.small_corner3)
-    small_corners = [small_corner1, small_corner2, small_corner3]
-    return small_corners
 
 
 class MainThread(QThread):
@@ -147,7 +104,7 @@ class MainThread(QThread):
         self.traffic_flow = TrafficFlow()
         self.time_difference = TimeDifference()
         self.cap = None
-
+        self.init_flag = True
         # darknet
         print('Loading yolo model...')
         self.netMain = darknet.load_net_custom(conf.cfg_path.encode("ascii"), conf.weight_path.encode("ascii"), 0, 1)
@@ -181,13 +138,6 @@ class MainThread(QThread):
     def set_image(self, img):
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         self.show_image.emit(img)
-
-    def re_init(self):
-        self.data = Data()
-        self.comity_pedestrian = ComityPedestrian()
-        self.traffic_flow = TrafficFlow()
-        self.time_difference = TimeDifference()
-        self.encoder, self.tracker = init_deep_sort()
 
     def print_message(self, time_flag):
         """
@@ -265,14 +215,23 @@ class MainThread(QThread):
         self.cap = cv2.VideoCapture(video_path)
 
     def run(self):
+        corners = read_template()
         while True:
             prev_time = time.time()
             ret, frame_read = self.cap.read()
-            corners = read_template()
+            if self.init_flag:
+                self.data = Data()
+                self.comity_pedestrian = ComityPedestrian()
+                self.traffic_flow = TrafficFlow()
+                self.time_difference = TimeDifference()
+                self.encoder, self.tracker = init_deep_sort()
+                self.init_flag = False
+
             if frame_read is None:
                 self.warn("加载视频失败！")
                 time.sleep(1)
                 continue
+
             frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
                                        interpolation=cv2.INTER_LINEAR)
             # 检测图片
@@ -298,14 +257,14 @@ class MainThread(QThread):
                 # 车道线识别
                 self.data.lane_lines, self.data.stop_line = \
                     lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, corners,
-                                             self.data.init_flag)
+                                             self.data.init_flag, boxes)
                 # 车道识别
                 self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
                                                                             self.data.lane_lines, self.data.init_flag)
                 # 获得车道信息
                 self.data.lanes_message = lane_line.set_lanes_message(boxes, self.data.lanes)
-                # # 检测违停区域
-                # self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
+                # 检测违停区域
+                self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
                 # 获得时间
                 self.traffic_flow.pre_time = time.time()
                 # 获得时间
@@ -315,12 +274,16 @@ class MainThread(QThread):
                 # 标志位改置
                 self.data.init_flag = False
 
+            # 检测车道线
             lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, None,
-                                                  self.data.init_flag)
+                                                  self.data.init_flag, boxes)
+            # 匹配车道
             lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
+            # 对车道线进行拟合
             lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
+            # 再次匹配车道
             lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
-
+            # 针对车道进行保护
             self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
                                                                   lanes)
 
@@ -351,7 +314,7 @@ class MainThread(QThread):
                               self.data.tracks_kinds)
 
             # 检测违规变道
-            self.data.illegal_boxes_number = judge_illegal_change_lanes(frame_read.shape[0], self.data.tracks,
+            self.data.illegal_boxes_number = judge_illegal_change_lanes(self.data.tracks,
                                                                         self.data.lane_lines,
                                                                         self.data.illegal_boxes_number,
                                                                         self.data.tracks_kinds)
@@ -375,18 +338,7 @@ class MainThread(QThread):
             # 保存违规车辆图片
             save_illegal_car(frame_read, self.data, boxes)
 
-            # corners_message = []
-            # for template_img in corners:
-            #     tl, br = template_demo(template_img, frame_read)
-            #     corner_message = [tl, br]
-            #     corners_message.append(corner_message)
-            # for corner_message in corners_message:
-            #     cv2.rectangle(frame_read, corner_message[0], corner_message[1], (0, 0, 255), 2)
-
-            # 显示红绿灯
-            # show_traffic_light(frame_read, boxes)
-
-            # # 画出预测结果
+            # 画出预测结果
             draw_result(frame_read, boxes, self.data, self.data.tracks_kinds)
             self.data.zebra_line.draw_zebra_line(frame_read)
             draw_lane_lines(frame_read, self.data.lane_lines)
@@ -405,11 +357,6 @@ class MainThread(QThread):
             # 显示图片
             frame_read = cv2.resize(frame_read, (1640, 950), interpolation=cv2.INTER_LINEAR)
             self.set_image(frame_read)
-            # out_win = "result"
-            # cv2.namedWindow(out_win, cv2.WINDOW_NORMAL)
-            # cv2.imshow(out_win, frame_read)
-            # if cv2.waitKey(1) == 27:
-            #     break
 
 
 if __name__ == "__main__":

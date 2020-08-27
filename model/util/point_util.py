@@ -11,72 +11,11 @@ class TimeDifference:
     pre_time = 0
 
 
-def calculate_variance(p1, p2, p3, p4):
-    """
-    计算两对坐标点的方差，省略开方和平均
-    """
-    return pow(p1[0] - p3[0], 2) + pow(p1[1] - p3[1], 2) + pow(p2[0] - p4[0], 2) + pow(p2[1] - p4[1], 2)
-
-
-def calculate_average(points):
-    """
-    算平均距离
-    """
-    if len(points) <= 1:
-        return 0
-    pre_point = points[0]
-    average = 0
-    flag = False
-    for point in points:
-        if not flag:
-            flag = True
-            continue
-        now_point = point
-        average = average + calculate_distance(pre_point, now_point)
-        pre_point = point
-    average = average / (len(points) - 1)
-    return average
-
-
-def calculate_average_deviation(points):
-    """
-    计算平均差
-    """
-    if len(points) <= 1:
-        return 0
-    average = calculate_average(points)
-    average_deviation = 0
-    pre_point = points[0]
-    flag = False
-    for point in points:
-        if not flag:
-            flag = True
-            continue
-        now_point = point
-        average_deviation = average_deviation + np.fabs(calculate_distance(pre_point, now_point) - average)
-        pre_point = point
-    average_deviation = average_deviation / (len(points) - 1)
-    return average_deviation
-
-
-def calculate_distance(p1, p2):
-    """
-    计算两个点的距离
-    """
-    return np.sqrt(pow(p1[0] - p2[0], 2) + pow(p1[1] - p2[1], 2))
-
-
-def too_small(p1, p2, size=60000):
-    """
-    判断矩形面积是否超过下限
-    """
-    # print((p2[0] - p1[0]) * (p2[1] - p1[1]))
-    return (p2[0] - p1[0]) * (p2[1] - p1[1]) > size
-
-
 def get_names(classes_path):
     """
     获得类别名称
+    :param classes_path: 类别路径
+    :return: 类别名称
     """
     import os
     classes_path = os.path.expanduser(classes_path)
@@ -89,6 +28,8 @@ def get_names(classes_path):
 def get_colors(class_names):
     """
     生成画矩形的颜色
+    :param class_names: 类名称
+    :return: 颜色
     """
     import colorsys
     # Generate colors for drawing bounding boxes.
@@ -104,6 +45,11 @@ def get_colors(class_names):
 def convert_back(x, y, w, h):
     """
     x y w h 转化成 左上坐标 右下坐标
+    :param x: 左上横坐标
+    :param y: 左上纵坐标
+    :param w: 宽度
+    :param h: 高度
+    :return: 左上坐标 右下坐标
     """
     xmin = int(round(x - (w / 2)))
     xmax = int(round(x + (w / 2)))
@@ -122,6 +68,8 @@ def convert_output(detections):
     类别编号  置信度 (x,y,w,h)
     转化为
     类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
+    :param detections: 类别编号  置信度 (x,y,w,h)
+    :return: None
     """
     boxes = []
     for detection in detections:
@@ -136,6 +84,9 @@ def make_track(boxes, tracks):
     """
     提取中心点做轨迹
     (类别编号，追踪编号，车牌号，所在车道，中点坐标...)
+    :param boxes: boxes
+    :param tracks: 原始轨迹
+    :return: None
     """
     # 车道信息（左线，右线，车道方向, 是否违规（-1违规，0未判断，1没有违规））
     lanes_message = [[[0, 0], [0, 0]], [[0, 0], [0, 0]], 0, 0]
@@ -160,18 +111,24 @@ def cast_origin(boxes, origin_width, origin_height, shape):
     """
     映射为原图大小
     类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
+    :param boxes: boxes
+    :param origin_width: 原始宽
+    :param origin_height: 原始长
+    :param shape: 现在长宽
+    :return: None
     """
     for box in boxes:
         box[2] = (int(box[2][0] / origin_width * shape[1]), int(box[2][1] / origin_height * shape[0]))
         box[3] = (int(box[3][0] / origin_width * shape[1]), int(box[3][1] / origin_height * shape[0]))
         box[4] = (int(box[4][0] / origin_width * shape[1]), int(box[4][1] / origin_height * shape[0]))
-    # for line in lane_lines:
-    #     line[0] = [int(line[0][0] / origin_width * shape[1]),int(line[0][0] / origin_width * shape[1])]
 
 
 def print_info(boxes, time):
     """
     打印预测信息
+    :param boxes: boxes
+    :param time: 时间
+    :return: None
     """
     print('从图片中找到 {} 个物体'.format(len(boxes)))
     count = 0
@@ -201,6 +158,11 @@ def find_one_illegal_boxes(illegal_number, tracks):
 def draw_result(image, boxes, data, track_kinds):
     """
     画出预测结果
+    :param image: 图片
+    :param boxes: boxes
+    :param data: data类
+    :param track_kinds: 轨迹结构体的种类
+    :return: None
     """
     if data.tracks is None:
         return None
@@ -254,6 +216,12 @@ def draw_result(image, boxes, data, track_kinds):
 
 # 计算斜率
 def get_slope(point1, point2):
+    """
+    计算斜率
+    :param point1:点1
+    :param point2:点2
+    :return:斜率
+    """
     point_1 = point1
     point_2 = point2
     if point_1[0] == point_2[0]:
@@ -263,11 +231,6 @@ def get_slope(point1, point2):
 
 # 判断两条线段相交
 def judge_two_line_intersect(p1, p2, p3, p4):
-    # flag1 = (p2[0] - p1[0]) * (p4[1] - p1[1]) - (p2[1] - p1[1]) * (p4[0] - p1[0])
-    # flag2 = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])
-    # flag3 = (p4[0] - p3[0]) * (p2[1] - p3[1]) - (p4[1] - p3[1]) * (p2[0] - p3[0])
-    # flag4 = (p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])
-
     flag1 = ((p2[0] - p1[0]) * (p4[1] - p1[1]) - (p2[1] - p1[1]) * (p4[0] - p1[0])) * 0.001
     flag2 = ((p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0])) * 0.001
     flag3 = ((p4[0] - p3[0]) * (p2[1] - p3[1]) - (p4[1] - p3[1]) * (p2[0] - p3[0])) * 0.001
@@ -382,16 +345,11 @@ def calculate_extremum_side(rect, side_kind):
 
 def calculate_extremum_lines(lines):
     max_length = 0
-    # longest_line = [[0, 0], [0, 0]]
     for line in lines:
         length = calculate_distance(line[0], line[1])
         if length > max_length:
             max_length = length
     return max_length
-
-
-# def judge_line_in_rect(line, tl, br):
-#     line
 
 
 def template_demo(template_img, src_img):
@@ -401,7 +359,6 @@ def template_demo(template_img, src_img):
     :param src_img: 原图像
     :return: tl-左上点，br-右下点
     """
-    # method = cv2.TM_SQDIFF_NORMED
     method = cv2.TM_CCORR_NORMED
     th, tw = template_img.shape[:2]
     result = cv2.matchTemplate(src_img, template_img, method)
@@ -409,3 +366,81 @@ def template_demo(template_img, src_img):
     tl = max_loc
     br = (tl[0] + tw, tl[1] + th)
     return tl, br
+
+
+def calculate_variance(p1, p2, p3, p4):
+    """
+    计算两对坐标点的方差，省略开方和平均
+    :param p1: 点1
+    :param p2: 点2
+    :param p3: 点3
+    :param p4: 点4
+    :return: 方差
+    """
+    return pow(p1[0] - p3[0], 2) + pow(p1[1] - p3[1], 2) + pow(p2[0] - p4[0], 2) + pow(p2[1] - p4[1], 2)
+
+
+def calculate_average(points):
+    """
+    计算平均距离
+    :param points: 点集
+    :return: 平均距离
+    """
+    if len(points) <= 1:
+        return 0
+    pre_point = points[0]
+    average = 0
+    flag = False
+    for point in points:
+        if not flag:
+            flag = True
+            continue
+        now_point = point
+        average = average + calculate_distance(pre_point, now_point)
+        pre_point = point
+    average = average / (len(points) - 1)
+    return average
+
+
+def calculate_average_deviation(points):
+    """
+    计算平均差
+    :param points: 点集
+    :return: 平均差
+    """
+    if len(points) <= 1:
+        return 0
+    average = calculate_average(points)
+    average_deviation = 0
+    pre_point = points[0]
+    flag = False
+    for point in points:
+        if not flag:
+            flag = True
+            continue
+        now_point = point
+        average_deviation = average_deviation + np.fabs(calculate_distance(pre_point, now_point) - average)
+        pre_point = point
+    average_deviation = average_deviation / (len(points) - 1)
+    return average_deviation
+
+
+def calculate_distance(p1, p2):
+    """
+    计算两个点的距离
+    :param p1: 点1
+    :param p2: 点2
+    :return: 距离
+    """
+    return np.sqrt(pow(p1[0] - p2[0], 2) + pow(p1[1] - p2[1], 2))
+
+
+def too_small(p1, p2, size=60000):
+    """
+    判断矩形面积是否超过下限
+    :param p1: 左上点
+    :param p2: 右下点
+    :param size: 阈值下限
+    :return: True-超过，False-没超过
+    """
+    return (p2[0] - p1[0]) * (p2[1] - p1[1]) > size

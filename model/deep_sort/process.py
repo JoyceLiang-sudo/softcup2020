@@ -26,7 +26,6 @@ def tracker_update(input_boxes, frame, encoder, tracker, track_label):
     tracker_boxes = []
     for box in input_boxes:
         if box[0] in track_label:
-            # continue
             # 转化成 [左上x ,左上y, 宽 ,高 , 类别 ,置信度 ] 输入追踪器
             tracker_boxes.append([box[3][0], box[3][1], box[4][0] - box[3][0], box[4][1] - box[3][1], box[0], box[1]])
 
@@ -70,10 +69,6 @@ def match_box(boxes, bbox, id):
     # 找出最小值
     if min(temp) < 1000:
         boxes[temp.index(min(temp))][5] = id
-    # else:
-    #     print(min(temp))
-    # i = find_min(boxes, temp)
-    # boxes[i][5] = id
     return boxes
 
 

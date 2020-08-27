@@ -110,6 +110,45 @@ def judge_illegal_area(img, lanes, stop_line):
     return flag, real_area
 
 
+def read_template():
+    big_corners = read_big_corners()
+    mid_corners = read_mid_corners()
+    small_corners = read_small_corners()
+    straight_line = cv2.imread(conf.straight_line)
+    straight_lines = [straight_line]
+
+    corners = [big_corners, mid_corners, small_corners, straight_lines]
+    # corners = straight_lines
+    return corners
+
+
+def read_big_corners():
+    big_corner1 = cv2.imread(conf.big_corner1)
+    big_corner2 = cv2.imread(conf.big_corner2)
+    big_corner3 = cv2.imread(conf.big_corner3)
+    big_corner4 = cv2.imread(conf.big_corner4)
+    big_corner5 = cv2.imread(conf.big_corner5)
+    big_corners = [big_corner1, big_corner2, big_corner3, big_corner4, big_corner5]
+    return big_corners
+
+
+def read_mid_corners():
+    mid_corner1 = cv2.imread(conf.mid_corner1)
+    mid_corner2 = cv2.imread(conf.mid_corner2)
+    mid_corner3 = cv2.imread(conf.mid_corner3)
+    mid_corner4 = cv2.imread(conf.mid_corner4)
+    mid_corners = [mid_corner1, mid_corner2, mid_corner3, mid_corner4]
+    return mid_corners
+
+
+def read_small_corners():
+    small_corner1 = cv2.imread(conf.small_corner1)
+    small_corner2 = cv2.imread(conf.small_corner2)
+    small_corner3 = cv2.imread(conf.small_corner3)
+    small_corners = [small_corner1, small_corner2, small_corner3]
+    return small_corners
+
+
 def find_illegal_area(img, lanes, stop_line):
     """
     找出违停区域(容量为2,下标为0的为左右两条线集合，下标为1的为停车线)
@@ -164,5 +203,3 @@ def find_illegal_parking_cars(illegal_area, tracks, numbers, track_kinds):
     illegal_cars = find_illegal_area_cars(illegal_area, tracks, track_kinds)
     now_numbers = find_real_numbers(numbers, illegal_cars)
     return now_numbers
-
-
