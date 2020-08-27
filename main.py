@@ -8,10 +8,12 @@ from PySide2.QtCore import Signal, QThread
 from PySide2.QtWidgets import QApplication, QFileDialog
 
 from model import lane_line
-from model.deep_sort.process import init_deep_sort, tracker_update
+from model.darknet.process import get_names, get_colors
+from model.deep_sort.process import init_deep_sort, tracker_update, make_track
 from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes
 from model.plate import plate_process
-from model.car import speed_measure, draw_speed_info, hypervelocity
+from model.car import speed_measure, hypervelocity
+from model.util.draw_result import find_one_illegal_boxes, draw_result, print_info, draw_speed_info
 from model.util.point_util import *
 from model.conf import conf
 from model.zebra import Zebra
@@ -21,9 +23,8 @@ from model.trafficflow import get_traffic_flow, TrafficFlow
 from model.retrograde import get_retrograde_cars
 from model.running_red_lights import judge_running_car
 from model.illegal_parking import find_illegal_area, find_illegal_parking_cars, read_template
-from model.save_img import save_illegal_car, create_save_file
+from model.util.save_img import save_illegal_car, create_save_file
 from model.util.GUI import Ui_Form
-from model.camera import set_camera_message
 from model.illegal_change_lanes import judge_illegal_change_lanes, judge_person_illegal_through_road
 
 
@@ -50,7 +51,6 @@ class Data(object):
         self.no_comity_pedestrian_cars_number = []  # 不礼让行人的车号
         self.no_comity_straight_number = []  # 不礼让直行的车号
         self.running_car = [[], []]  # 闯红灯车辆的追踪编号
-        self.camera_message = []  # 相机的相关信息
 
     class_names = get_names(conf.names_path)  # 标签名称
     colors = get_colors(class_names)  # 每个标签对应的颜色
@@ -106,7 +106,7 @@ class MainThread(QThread):
         self.cap = None
         self.init_flag = True
         # darknet
-        print('Loading yolo model...')
+        print('Loading yolo corner...')
         self.netMain = darknet.load_net_custom(conf.cfg_path.encode("ascii"), conf.weight_path.encode("ascii"), 0, 1)
         self.metaMain = darknet.load_meta(conf.radar_data_path.encode("ascii"))
         self.darknet_image_width = darknet.network_width(self.netMain)
@@ -114,15 +114,15 @@ class MainThread(QThread):
         self.darknet_image = darknet.make_image(self.darknet_image_width, self.darknet_image_height, 3)
 
         print('Yolo image size: [' + str(self.darknet_image_width) + ',' + str(self.darknet_image_height) + ']')
-        print('Load yolo model success!')
+        print('Load yolo corner success!')
 
         # 车牌识别进程
-        print('Loading license plate model...')
+        print('Loading license plate corner...')
         plate_parent_pipe, plate_child_pipe = Pipe()
         license_plate_process = Process(target=plate_process, args=(plate_child_pipe,))
         license_plate_process.start()
         self.plate_pipe = plate_parent_pipe
-        print('Load license plate model success!')
+        print('Load license plate corner success!')
 
         # 追踪器
         print('Loading deep sort...')
@@ -216,6 +216,7 @@ class MainThread(QThread):
 
     def run(self):
         corners = read_template()
+        create_save_file()
         while True:
             prev_time = time.time()
             ret, frame_read = self.cap.read()
@@ -236,6 +237,7 @@ class MainThread(QThread):
                                        interpolation=cv2.INTER_LINEAR)
             # 检测图片
             darknet.copy_image_from_bytes(self.darknet_image, frame_resized.tobytes())
+
             # 类别编号  置信度 (x,y,w,h)
             detections = darknet.detect_image(self.netMain, self.metaMain, self.darknet_image, thresh=conf.thresh)
 
@@ -253,7 +255,6 @@ class MainThread(QThread):
 
             if self.data.init_flag:
                 print('Image size: [' + str(frame_read.shape[1]) + ',' + str(frame_read.shape[0]) + ']')
-                create_save_file()
                 # 车道线识别
                 self.data.lane_lines, self.data.stop_line = \
                     lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, corners,
@@ -263,14 +264,10 @@ class MainThread(QThread):
                                                                             self.data.lane_lines, self.data.init_flag)
                 # 获得车道信息
                 self.data.lanes_message = lane_line.set_lanes_message(boxes, self.data.lanes)
-                # 检测违停区域
-                self.data.illegal_area = find_illegal_area(frame_read, self.data.lanes, self.data.stop_line)
                 # 获得时间
                 self.traffic_flow.pre_time = time.time()
                 # 获得时间
                 self.time_difference.pre_time = time.time()
-                # 获得相机参数
-                self.data.camera_message = set_camera_message()
                 # 标志位改置
                 self.data.init_flag = False
 
@@ -343,11 +340,11 @@ class MainThread(QThread):
             self.data.zebra_line.draw_zebra_line(frame_read)
             draw_lane_lines(frame_read, self.data.lane_lines)
             draw_stop_line(frame_read, self.data.stop_line)
-            # # 画车速
+            # 画车速
             draw_speed_info(frame_read, self.data.speeds, boxes)
 
             # 打印预测信息
-            print_info(boxes, time.time() - prev_time)
+            # print_info(boxes, time.time() - prev_time)
 
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:

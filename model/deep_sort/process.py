@@ -72,12 +72,28 @@ def match_box(boxes, bbox, id):
     return boxes
 
 
-def find_min(boxes, temp):
+def make_track(boxes, tracks):
     """
-    找到最佳匹配的框
+    提取中心点做轨迹
+    (类别编号，追踪编号，车牌号，所在车道，中点坐标...)
+    :param boxes: boxes
+    :param tracks: 原始轨迹
+    :return: None
     """
-    while boxes[temp.index(min(temp))][5] != -1:
-        # 如果最小值已经匹配到了一个框就把它剔除
-        temp[temp.index(min(temp))] = float('inf')
-    # 返回最佳匹配的下标
-    return temp.index(min(temp))
+    # 车道信息（左线，右线，车道方向, 是否违规（-1违规，0未判断，1没有违规））
+    lanes_message = [[[0, 0], [0, 0]], [[0, 0], [0, 0]], 0, 0]
+    for box in boxes:
+        if box[5] == -1:
+            continue
+        flag = 0
+        for _track in tracks:
+            if _track[1] == box[5]:
+                if _track[2] is None:
+                    if box[-1] is not None:
+                        _track[2] = box[-1]
+                _track.append(box[2])
+                flag = 1
+                break
+        if flag == 0:
+            track = [box[0], box[5], box[-1], lanes_message, box[2]]
+            tracks.append(track)

@@ -188,7 +188,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="Re-ID feature extractor")
     parser.add_argument(
-        "--model",
+        "--corner",
         default="resources/networks/mars-small128.pb",
         help="Path to freezed inference graph protobuf.")
     parser.add_argument(

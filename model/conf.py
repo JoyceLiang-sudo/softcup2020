@@ -6,16 +6,6 @@ import tensorflow as tf
 conf = edict()
 
 # 视频路径，为0则打开内置摄像头
-# conf.video_path = "./data/不礼让行人.mp4"
-# conf.video_path = "./data/逆行.mp4"
-# conf.video_path = "./data/行人横穿马路.mp4"
-# conf.video_path = "./data/警车闯红灯.mp4"
-# conf.video_path = "./data/video.avi"
-# conf.video_path = "./data/不礼让行人2.mp4"
-# conf.video_path = "./data/违规变道.mp4"
-# conf.video_path = "./data/直线马路.mp4"
-# conf.video_path = "./data/小路口.mp4"
-# conf.video_path = "./data/中路口.mp4"
 # conf.video_path = "./data/大路口.mp4"
 
 # 保存文件路径
@@ -26,31 +16,12 @@ conf.save_path3 = "no_comity_pedestrian/"
 conf.save_path4 = "retrograde_cars/"
 conf.save_path5 = "running_red/"
 
-# 保存模板路径
-conf.big_corner1 = "./data/big-corner1.PNG"
-conf.big_corner2 = "./data/big-corner2.PNG"
-conf.big_corner3 = "./data/big-corner3.PNG"
-conf.big_corner4 = "./data/big-corner4.PNG"
-conf.big_corner5 = "./data/big-corner5.PNG"
-
-conf.mid_corner1 = "./data/mid-corner1.PNG"
-conf.mid_corner2 = "./data/mid-corner2.PNG"
-conf.mid_corner3 = "./data/mid-corner3.PNG"
-conf.mid_corner4 = "./data/mid-corner4.PNG"
-
-conf.small_corner1 = "./data/small-corner1.PNG"
-conf.small_corner2 = "./data/small-corner2.PNG"
-conf.small_corner3 = "./data/small-corner3.PNG"
-
-conf.straight_line = "./data/straight-line.PNG"
-
 # yolo配置文件
 conf.cfg_path = './data/SoftCup.cfg'
 conf.weight_path = './data/SoftCup_final.weights'
 conf.radar_data_path = './data/SoftCup.data'
 conf.names_path = './data/SoftCup.names'
-conf.hide_labels = [0, 1, 5, 14]  # 不在最终结果上画出来的类别编号
-# conf.hide_labels = [14]  # 不在最终结果上画出来的类别编号
+conf.hide_labels = [14]  # 不在最终结果上画出来的类别编号
 
 # 置信度，大于此值会被判断为真
 conf.thresh = 0.3
@@ -59,6 +30,24 @@ conf.thresh = 0.3
 conf.plate_cascade = './data/plate_models/cascade.xml'
 conf.plate_model12 = './data/plate_models/model12.h5'
 conf.plate_ocr_plate_all_gru = './data/plate_models/ocr_plate_all_gru.h5'
+
+# 保存模板路径
+conf.big_corner1 = "./data/corner/big-corner1.PNG"
+conf.big_corner2 = "./data/corner/big-corner2.PNG"
+conf.big_corner3 = "./data/corner/big-corner3.PNG"
+conf.big_corner4 = "./data/corner/big-corner4.PNG"
+conf.big_corner5 = "./data/corner/big-corner5.PNG"
+
+conf.mid_corner1 = "./data/corner/mid-corner1.PNG"
+conf.mid_corner2 = "./data/corner/mid-corner2.PNG"
+conf.mid_corner3 = "./data/corner/mid-corner3.PNG"
+conf.mid_corner4 = "./data/corner/mid-corner4.PNG"
+
+conf.small_corner1 = "./data/corner/small-corner1.PNG"
+conf.small_corner2 = "./data/corner/small-corner2.PNG"
+conf.small_corner3 = "./data/corner/small-corner3.PNG"
+
+conf.straight_line = "./data/corner/straight-line.PNG"
 
 # 设置tf显存占用自增长，防止显存溢出
 physical_devices = tf.config.list_physical_devices('GPU')

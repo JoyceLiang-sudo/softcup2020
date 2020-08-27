@@ -35,22 +35,6 @@ def speed_measure(tracks, time, speeds, track_kinds):
                 speeds.append([track[1], track[-1], now_speed * 1000])
 
 
-def draw_speed_info(image, speeds, boxes):
-    """
-    在图片上显示速度
-    追踪编号 中点 方向 速度
-    """
-    for box in boxes:
-        if box[5] != -1:
-            for speed in speeds:
-                if box[5] != speed[0]:
-                    continue
-                # 速度
-                cv2.putText(image, '{:.2f}'.format(speed[2]), (speed[1][0], speed[1][1] - 30),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            1, [255, 255, 255], 2)
-
-
 def show_traffic_light(image, boxes):
     """
     放大交通灯显示

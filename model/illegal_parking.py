@@ -1,6 +1,6 @@
-from model.lane_line import get_intersection_point
 from model.util.point_util import *
 from model.lane_line import deal_contours, roi_mask
+from model.conf import conf
 import sys
 
 

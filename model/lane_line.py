@@ -188,6 +188,11 @@ def get_lane_lines(img, zebra_line, template_img, init_flag, boxes):
     :param boxes: boxes
     :return: 车道线
     """
+    for box in boxes:
+        if box[0] not in [0, 1, 5]:
+            continue
+        print(box)
+
     find_src = img.copy()
     if zebra_line is None:
         zebra_width = img.shape[1]
@@ -536,4 +541,3 @@ def find_longest_line(lane_lines):
             max_length = length
             result_line = line
     return result_line
-

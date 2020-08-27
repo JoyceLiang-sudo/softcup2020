@@ -2,44 +2,12 @@
 """
 一些坐标点操作的工具
 """
-from model.conf import conf
 import numpy as np
 import cv2
 
 
 class TimeDifference:
     pre_time = 0
-
-
-def get_names(classes_path):
-    """
-    获得类别名称
-    :param classes_path: 类别路径
-    :return: 类别名称
-    """
-    import os
-    classes_path = os.path.expanduser(classes_path)
-    with open(classes_path) as f:
-        class_names = f.readlines()
-    class_names = [c.strip() for c in class_names]
-    return class_names
-
-
-def get_colors(class_names):
-    """
-    生成画矩形的颜色
-    :param class_names: 类名称
-    :return: 颜色
-    """
-    import colorsys
-    # Generate colors for drawing bounding boxes.
-    hsv_tuples = [(x / len(class_names), 1., 1.)
-                  for x in range(len(class_names))]
-    colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples))
-    colors = list(
-        map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)),
-            colors))
-    return colors
 
 
 def convert_back(x, y, w, h):
@@ -80,33 +48,6 @@ def convert_output(detections):
     return boxes
 
 
-def make_track(boxes, tracks):
-    """
-    提取中心点做轨迹
-    (类别编号，追踪编号，车牌号，所在车道，中点坐标...)
-    :param boxes: boxes
-    :param tracks: 原始轨迹
-    :return: None
-    """
-    # 车道信息（左线，右线，车道方向, 是否违规（-1违规，0未判断，1没有违规））
-    lanes_message = [[[0, 0], [0, 0]], [[0, 0], [0, 0]], 0, 0]
-    for box in boxes:
-        if box[5] == -1:
-            continue
-        flag = 0
-        for _track in tracks:
-            if _track[1] == box[5]:
-                if _track[2] is None:
-                    if box[-1] is not None:
-                        _track[2] = box[-1]
-                _track.append(box[2])
-                flag = 1
-                break
-        if flag == 0:
-            track = [box[0], box[5], box[-1], lanes_message, box[2]]
-            tracks.append(track)
-
-
 def cast_origin(boxes, origin_width, origin_height, shape):
     """
     映射为原图大小
@@ -121,97 +62,6 @@ def cast_origin(boxes, origin_width, origin_height, shape):
         box[2] = (int(box[2][0] / origin_width * shape[1]), int(box[2][1] / origin_height * shape[0]))
         box[3] = (int(box[3][0] / origin_width * shape[1]), int(box[3][1] / origin_height * shape[0]))
         box[4] = (int(box[4][0] / origin_width * shape[1]), int(box[4][1] / origin_height * shape[0]))
-
-
-def print_info(boxes, time):
-    """
-    打印预测信息
-    :param boxes: boxes
-    :param time: 时间
-    :return: None
-    """
-    print('从图片中找到 {} 个物体'.format(len(boxes)))
-    count = 0
-    for box in boxes:
-        if box[5] != -1:
-            count += 1
-    print('成功追踪 {} 个物体'.format(count))
-    print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
-
-
-def find_one_illegal_boxes(illegal_number, tracks):
-    """
-    找一种违规信息
-    :param tracks:轨迹
-    :param illegal_number:非法编号
-    :return:可疑轨迹
-    """
-    possible_tracks = []
-    for number in illegal_number:
-        for track in tracks:
-            if track[1] == number:
-                possible_tracks.append(track)
-                break
-    return possible_tracks
-
-
-def draw_result(image, boxes, data, track_kinds):
-    """
-    画出预测结果
-    :param image: 图片
-    :param boxes: boxes
-    :param data: data类
-    :param track_kinds: 轨迹结构体的种类
-    :return: None
-    """
-    if data.tracks is None:
-        return None
-    for box in boxes:
-        if box[0] in conf.hide_labels:
-            continue
-        box_color = data.colors[box[0]]
-        box_thick = 3
-        for number in data.illegal_boxes_number:
-            if number == box[5]:
-                box_color = [230, 100, 100]
-                box_thick = 10
-                break
-        for car_person in data.no_comity_pedestrian_cars_number:
-            if car_person == box[5]:
-                box_color = [230, 100, 100]
-                box_thick = 10
-                break
-
-        for car_light in data.running_car[1]:
-            if car_light == box[5]:
-                box_color = [230, 100, 100]
-                box_thick = 10
-                break
-        for car_run in data.retrograde_cars_number:
-            if car_run == box[5]:
-                box_color = [230, 100, 100]
-                box_thick = 10
-                break
-
-        cv2.rectangle(image, box[3], box[4], box_color, box_thick)
-        predicted_class = data.class_names[box[0]]
-        label = '{} {:.2f}'.format(predicted_class, box[1])
-        cv2.putText(image, label, (box[3][0], box[3][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, data.colors[box[0]], 2)
-
-        # 画追踪编号
-        if box[5] != -1:
-            cv2.putText(image, str(box[5]), box[2], cv2.FONT_HERSHEY_SIMPLEX, 1, data.colors[box[0]], 2)
-            judge_break = 0
-            for track in data.tracks:
-                if box[5] != track[1]:
-                    continue
-                i = track_kinds
-                while i < len(track) - 1:
-                    cv2.circle(image, track[i], 1, data.colors[box[0]], -1)
-                    i = i + 1
-                    judge_break = 1
-                if judge_break == 1:
-                    break
 
 
 # 计算斜率
