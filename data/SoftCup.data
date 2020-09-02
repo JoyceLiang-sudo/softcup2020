@@ -1,4 +1,4 @@
-classes= 15
+classes= 21
 train  = train.txt
 valid = val.txt
 #valid  = test_bdd_list.txt

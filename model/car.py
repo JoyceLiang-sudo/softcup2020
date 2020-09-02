@@ -53,7 +53,7 @@ def show_traffic_light(image, boxes):
         cv2.waitKey(1)
 
 
-def hypervelocity(speeds, over_speeds, boxes, max_speed=80):
+def hypervelocity(speeds, over_speeds, boxes, max_speed=95):
     """
     判断超速
     追踪编号，速度，车牌

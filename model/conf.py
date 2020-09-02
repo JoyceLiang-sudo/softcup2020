@@ -18,10 +18,10 @@ conf.save_path5 = "running_red/"
 
 # yolo配置文件
 conf.cfg_path = './data/SoftCup.cfg'
-conf.weight_path = './data/SoftCup_final.weights'
+conf.weight_path = './data/SoftCup.weights'
 conf.radar_data_path = './data/SoftCup.data'
 conf.names_path = './data/SoftCup.names'
-conf.hide_labels = [14]  # 不在最终结果上画出来的类别编号
+conf.hide_labels = [20]  # 不在最终结果上画出来的类别编号
 
 # 置信度，大于此值会被判断为真
 conf.thresh = 0.3
@@ -57,7 +57,7 @@ for physical_device in physical_devices:
 # deep sort 的配置文件
 conf.trackerConf = edict()
 
-conf.trackerConf.track_label = [2, 6, 7, 13]  # 追踪器要追踪的标签号
+conf.trackerConf.track_label = [5, 9, 10, 19]  # 追踪器要追踪的标签号
 conf.trackerConf.max_cosine_distance = 0.3
 conf.trackerConf.nn_budget = None
 conf.trackerConf.nms_max_overlap = 0.7

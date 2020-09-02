@@ -14,7 +14,7 @@ def judge_running_car(boxes, running_car, tracks, zebra, track_kinds):
 
     red_light_flag = False
     for box in boxes:
-        if box[0] not in [4, 8, 12]:
+        if box[0] not in [7, 13, 19]:
             red_light_flag = True
     if not red_light_flag:
         # 没有识别到红灯
@@ -22,7 +22,7 @@ def judge_running_car(boxes, running_car, tracks, zebra, track_kinds):
 
     for track in tracks:
 
-        if track[0] in [2, 6, 13] and len(track) > track_kinds + 1:
+        if track[0] in [5, 9, 19] and len(track) > track_kinds + 1:
 
             if track[1] in running_car[1]:
                 # 该车辆已经判定为闯红灯

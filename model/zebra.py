@@ -51,7 +51,7 @@ class Zebra:
         """
         possible_zebra = []
         for box in boxes:
-            if box[0] == 14:
+            if box[0] == 20:
                 # 先扩大斑马线到左右边界
                 possible_zebra.append([(0, box[2][1]), (shape[1], box[2][1]), (0, box[3][1]), (shape[1], box[4][1])])
         possible_zebra.sort()

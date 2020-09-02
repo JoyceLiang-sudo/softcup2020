@@ -1,3 +1,6 @@
+No_stop
+left_right
+corner
 arrow_stra
 arrow_left
 motor
@@ -6,8 +9,11 @@ red_left
 arrow_right
 bus
 person
+stra_left
+stra_right
 red_circle
 green_circle
+bus_lane
 green_left
 yellow
 red_num
