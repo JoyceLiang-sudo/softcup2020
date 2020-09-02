@@ -97,3 +97,19 @@ def make_track(boxes, tracks):
         if flag == 0:
             track = [box[0], box[5], box[-1], lanes_message, box[2]]
             tracks.append(track)
+
+
+def find_boxes_message(boxes):
+    corners_message = []
+    for box in boxes:
+        if box[0] == 2:
+            corners_message.append([box[3], box[4]])
+    real_corners = []
+    for corner_message in corners_message:
+        if corner_message[1][0] > 3200:
+            new_corner = [[corner_message[0][0] + 200, corner_message[0][1]], corner_message[1]]
+#             corner_message[0][0] = corner_message[0][0] - 50
+            real_corners.append(new_corner)
+            continue
+        real_corners.append(corner_message)
+    return real_corners

@@ -53,6 +53,27 @@ def judge_person_illegal_through_road(tracks, zebra_crossing, img_width):
     return illegal_person
 
 
+def judge_drive_wrong_direction(img_height, tracks, illegal_cars, track_kinds):
+    drive_wrong_direction = []
+    for track in tracks:
+        if len(track) < track_kinds + 1:
+            continue
+        if track[0] != 19:
+            continue
+        if not judge_direction_wrong(img_height, track, illegal_cars):
+            continue
+        drive_wrong_direction.append(track[1])
+    for number1 in drive_wrong_direction:
+        flag = True
+        for number2 in illegal_cars:
+            if number1 == number2:
+                flag = False
+                break
+        if flag:
+            illegal_cars.append(number1)
+    return illegal_cars
+
+
 def judge_direction_wrong(img_height, track, illegal_cars):
     left_flag = judge_point_line_position(track[-1], track[3][0]) * judge_point_line_position(track[-2],
                                                                                               track[3][0]) <= 0

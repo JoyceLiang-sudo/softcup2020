@@ -9,7 +9,7 @@ from PySide2.QtWidgets import QApplication, QFileDialog
 
 from model import lane_line
 from model.darknet.process import get_names, get_colors
-from model.deep_sort.process import init_deep_sort, tracker_update, make_track
+from model.deep_sort.process import init_deep_sort, tracker_update, make_track, find_boxes_message
 from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes
 from model.plate import plate_process
 from model.car import speed_measure, hypervelocity
@@ -22,16 +22,18 @@ from model.comitypedestrian import judge_comity_pedestrian, ComityPedestrian
 from model.trafficflow import get_traffic_flow, TrafficFlow
 from model.retrograde import get_retrograde_cars
 from model.running_red_lights import judge_running_car
-from model.illegal_parking import find_illegal_area, find_illegal_parking_cars, read_template
+from model.illegal_parking import find_illegal_area, find_illegal_parking_cars
 from model.util.save_img import save_illegal_car, create_save_file
 from model.util.GUI import Ui_Form
-from model.illegal_change_lanes import judge_illegal_change_lanes, judge_person_illegal_through_road
+from model.illegal_change_lanes import judge_illegal_change_lanes, judge_person_illegal_through_road, \
+    judge_drive_wrong_direction
 
 
 class Data(object):
     def __init__(self):
         self.tracks = []  # 对应追踪编号的轨迹
         self.tracks_kinds = 5  # 轨迹数组变量种类
+        self.drive_wrong_direction = []  # 不按导向行驶
         self.illegal_boxes_number = []  # 违规变道车的追踪编号
         self.illegal_person_number = []  # 横穿马路行人编号
         self.lane_lines = []  # 车道线
@@ -215,7 +217,6 @@ class MainThread(QThread):
         self.cap = cv2.VideoCapture(video_path)
 
     def run(self):
-        corners = read_template()
         create_save_file()
         while True:
             prev_time = time.time()
@@ -250,20 +251,22 @@ class MainThread(QThread):
             # 把识别框映射为输入图片大小
             cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
 
+            # 提取boxes信息
+            corners_message = find_boxes_message(boxes)
+
             # 斑马线识别
             self.data.zebra_line.get_zebra_line(boxes, frame_read.shape)
 
             if self.data.init_flag:
                 print('Image size: [' + str(frame_read.shape[1]) + ',' + str(frame_read.shape[0]) + ']')
-                # # 车道线识别
-                # self.data.lane_lines, self.data.stop_line = \
-                #     lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, corners,
-                #                              self.data.init_flag, boxes)
-                # # 车道识别
-                # self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read,
-                #                                                             self.data.lane_lines, self.data.init_flag)
-                # # 获得车道信息
-                # self.data.lanes_message = lane_line.set_lanes_message(boxes, self.data.lanes)
+                # 车道线识别
+                self.data.lane_lines, self.data.stop_line = \
+                    lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, corners_message)
+                # 车道识别
+                self.data.lanes, self.data.lane_lines = lane_line.get_lanes(frame_read, self.data.lane_lines,
+                                                                            self.data.init_flag)
+                # 获得车道信息
+                self.data.lanes_message = lane_line.set_lanes_message(boxes, self.data.lanes)
                 # 获得时间
                 self.traffic_flow.pre_time = time.time()
                 # 获得时间
@@ -271,9 +274,11 @@ class MainThread(QThread):
                 # 标志位改置
                 self.data.init_flag = False
 
+            # print("stop_lines")
+            # print(self.data.stop_line)
             # # 检测车道线
-            # lane_lines = lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line, None,
-            #                                       self.data.init_flag, boxes)
+            # lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line,
+            #                                                            corners_message)
             # # 匹配车道
             # lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
             # # 对车道线进行拟合
@@ -283,22 +288,21 @@ class MainThread(QThread):
             # # 针对车道进行保护
             # self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
             #                                                       lanes)
-
-            # 车牌识别
-            self.get_license_plate(boxes, frame_read)
-
-            # 制作轨迹
-            make_track(boxes, self.data.tracks)
-
+            # # 车牌识别
+            # self.get_license_plate(boxes, frame_read)
+            #
+            # # 制作轨迹
+            # make_track(boxes, self.data.tracks)
+            #
             # # 匹配车道
             # self.data.tracks = make_tracks_lane(self.data.tracks, self.data.lanes, self.data.stop_line,
             #                                     self.data.lanes_message)
-
-            # 计算速度
-            speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
-
-            # 判断超速
-            hypervelocity(self.data.speeds, self.data.over_speeds, boxes)
+            #
+            # # 计算速度
+            # speed_measure(self.data.tracks, float(time.time() - prev_time), self.data.speeds, self.data.tracks_kinds)
+            #
+            # # 判断超速
+            # hypervelocity(self.data.speeds, self.data.over_speeds, boxes)
 
             # # 检测礼让行人
             # self.data.no_comity_pedestrian_cars_number, self.data.no_comity_straight_number = \
@@ -306,15 +310,20 @@ class MainThread(QThread):
             #                             self.comity_pedestrian,
             #                             self.data.no_comity_pedestrian_cars_number, boxes, self.data.tracks_kinds)
 
-            #  检测闯红灯
-            judge_running_car(boxes, self.data.running_car, self.data.tracks, self.data.zebra_line,
-                              self.data.tracks_kinds)
-
+            # #  检测闯红灯
+            # judge_running_car(boxes, self.data.running_car, self.data.tracks, self.data.zebra_line,
+            #                   self.data.tracks_kinds)
+            #
             # # 检测违规变道
             # self.data.illegal_boxes_number = judge_illegal_change_lanes(self.data.tracks,
             #                                                             self.data.lane_lines,
             #                                                             self.data.illegal_boxes_number,
             #                                                             self.data.tracks_kinds)
+            #
+            # # 检测不按导向行驶
+            # self.data.drive_wrong_direction = judge_drive_wrong_direction(frame_read.shape[0], self.data.tracks,
+            #                                                               self.data.drive_wrong_direction,
+            #                                                               self.data.tracks_kinds)
             # # 检测行人横穿马路
             # self.data.illegal_person_number = judge_person_illegal_through_road(self.data.tracks,
             #                                                                     self.data.zebra_line.down_zebra_line,
@@ -341,7 +350,7 @@ class MainThread(QThread):
             draw_lane_lines(frame_read, self.data.lane_lines)
             draw_stop_line(frame_read, self.data.stop_line)
             # 画车速
-            draw_speed_info(frame_read, self.data.speeds, boxes)
+            # draw_speed_info(frame_read, self.data.speeds, boxes)
 
             # 打印预测信息
             # print_info(boxes, time.time() - prev_time)

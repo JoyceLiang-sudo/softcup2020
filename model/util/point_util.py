@@ -4,6 +4,7 @@
 """
 import numpy as np
 import cv2
+from model.conf import *
 
 
 class TimeDifference:
@@ -64,6 +65,38 @@ def cast_origin(boxes, origin_width, origin_height, shape):
         box[4] = (int(box[4][0] / origin_width * shape[1]), int(box[4][1] / origin_height * shape[0]))
 
 
+def print_info(boxes, time):
+    """
+    打印预测信息
+    :param boxes: boxes
+    :param time: 时间
+    :return: None
+    """
+    print('从图片中找到 {} 个物体'.format(len(boxes)))
+    count = 0
+    for box in boxes:
+        if box[5] != -1:
+            count += 1
+    print('成功追踪 {} 个物体'.format(count))
+    print("所用时间：{} 秒 帧率：{} \n".format(time.__str__(), 1 / time))
+
+
+def find_one_illegal_boxes(illegal_number, tracks):
+    """
+    找一种违规信息
+    :param tracks:轨迹
+    :param illegal_number:非法编号
+    :return:可疑轨迹
+    """
+    possible_tracks = []
+    for number in illegal_number:
+        for track in tracks:
+            if track[1] == number:
+                possible_tracks.append(track)
+                break
+    return possible_tracks
+
+
 # 计算斜率
 def get_slope(point1, point2):
     """
@@ -103,8 +136,23 @@ def get_intersection_point(line1, line2):
     b1 = line1[0][1] - k1 * line1[0][0]
     k2 = (line2[0][1] - line2[1][1]) / (line2[0][0] - line2[1][0])
     b2 = line2[0][1] - k2 * line2[0][0]
-    x = (b2 - b1) / (k1 - k2)
+    if k1 == k2:
+        x = (b2 - b1) / (k1 - k2 + 1)
+    else:
+        x = (b2 - b1) / (k1 - k2)
     y = k1 * x + b1
+    # print("k1")
+    # print(k1)
+    # print("b1")
+    # print(b1)
+    # print("k2")
+    # print(k2)
+    # print("b2")
+    # print(b2)
+    # print("x")
+    # print(x)
+    # print("y")
+    # print(y)
     point.append(int(x))
     point.append(int(y))
     return point

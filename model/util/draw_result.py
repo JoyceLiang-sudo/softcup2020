@@ -49,6 +49,7 @@ def draw_result(image, boxes, data, track_kinds):
     """
     if data.tracks is None:
         return None
+    
     for box in boxes:
         if box[0] in conf.hide_labels:
             continue
@@ -57,6 +58,11 @@ def draw_result(image, boxes, data, track_kinds):
         for number in data.illegal_boxes_number:
             if number == box[5]:
                 box_color = [230, 100, 100]
+                box_thick = 10
+                break
+        for number in data.drive_wrong_direction:
+            if number == box[5]:
+                box_color = [200, 100, 255]
                 box_thick = 10
                 break
         for car_person in data.no_comity_pedestrian_cars_number:
