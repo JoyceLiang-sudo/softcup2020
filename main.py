@@ -10,7 +10,8 @@ from PySide2.QtWidgets import QApplication, QFileDialog
 from model import lane_line
 from model.darknet.process import get_names, get_colors
 from model.deep_sort.process import init_deep_sort, tracker_update, make_track, find_boxes_message
-from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes
+from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes, \
+    protect_stop_lines
 from model.plate import plate_process
 from model.car import speed_measure, hypervelocity
 from model.util.draw_result import find_one_illegal_boxes, draw_result, print_info, draw_speed_info
@@ -151,7 +152,8 @@ class MainThread(QThread):
                           find_one_illegal_boxes(self.data.illegal_boxes_number, self.data.tracks),
                           find_one_illegal_boxes(self.data.no_comity_pedestrian_cars_number, self.data.tracks),
                           find_one_illegal_boxes(self.data.illegal_person_number, self.data.tracks),
-                          find_one_illegal_boxes(self.data.no_comity_straight_number, self.data.tracks)]
+                          find_one_illegal_boxes(self.data.no_comity_straight_number, self.data.tracks),
+                          find_one_illegal_boxes(self.data.drive_wrong_direction, self.data.tracks)]
         if time_flag:
             self.info("车流量：" + str(self.data.traffic_flow) + "个/分钟")
             self.print_plate(self.data.tracks)
@@ -163,6 +165,7 @@ class MainThread(QThread):
             self.print_one_illegal_boxes(illegal_tracks[5], '横穿马路')
             self.print_over_speed()
             self.print_one_illegal_boxes(illegal_tracks[6], '不礼让直行')
+            self.print_one_illegal_boxes(illegal_tracks[7], '不按导向行驶')
 
     def print_one_illegal_boxes(self, one_illegal_track, illegal_name):
         if len(one_illegal_track) > 0:
@@ -276,18 +279,20 @@ class MainThread(QThread):
 
             # print("stop_lines")
             # print(self.data.stop_line)
-            # # 检测车道线
-            # lane_lines, self.data.stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line,
-            #                                                            corners_message)
-            # # 匹配车道
-            # lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
-            # # 对车道线进行拟合
-            # lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
-            # # 再次匹配车道
-            # lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
-            # # 针对车道进行保护
-            # self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
-            #                                                       lanes)
+            # 检测车道线
+            lane_lines, stop_line = lane_line.get_lane_lines(frame_read, self.data.zebra_line.down_zebra_line,
+                                                             corners_message)
+
+            self.data.stop_line = protect_stop_lines(self.data.stop_line, stop_line)
+            # 匹配车道
+            lanes, lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
+            # 对车道线进行拟合
+            lane_lines = make_adjoin_matching(self.data.lane_lines, lane_lines)
+            # 再次匹配车道
+            lanes, pp_lane_lines = lane_line.get_lanes(frame_read, lane_lines, True)
+            # 针对车道进行保护
+            self.data.lane_lines, self.data.lanes = protect_lanes(self.data.lane_lines, lane_lines, self.data.lanes,
+                                                                  lanes)
             # # 车牌识别
             # self.get_license_plate(boxes, frame_read)
             #

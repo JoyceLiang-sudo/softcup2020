@@ -150,8 +150,6 @@ def get_stop_line(stop_lines):
         right_y += stop_line[1][1]
     left_y = int(left_y / len(stop_lines))
     right_y = int(right_y / len(stop_lines))
-    # print(stop_lines)
-    print([[stop_lines[0][0][0], left_y], [stop_lines[0][1][0], right_y]])
     return [[stop_lines[0][0][0], left_y], [stop_lines[0][1][0], right_y]]
 
 
@@ -177,10 +175,6 @@ def deal_picture(img, zebra_crossing, zebra_width, corner_message):
     lane_lines, stop_lines = hough_lines(roi_edges, rho, theta, threshold, min_line_length, max_line_gap,
                                          zebra_crossing, corner_message)
     # 车道线排序
-    # reference_line
-    # [[0, 595.75], [3840, 595.75]]
-    # reference_line
-    # [[1225, 1356], [3562, 1517]]
     lane_lines.sort()
     stop_line = get_stop_line(stop_lines)
     extend_lane_lines(img.shape[1], img.shape[0], stop_line, lane_lines)
@@ -598,3 +592,9 @@ def find_final_stop_line(stop_lines, corners_message):
         right_point = get_intersection_point(line, right_line)
         real_stop_lines.append([left_point, right_point])
     return real_stop_lines
+
+
+def protect_stop_lines(pre_stop_line, now_stop_line):
+    if now_stop_line[0][1] == 0:
+        return pre_stop_line
+    return now_stop_line
