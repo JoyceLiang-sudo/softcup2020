@@ -101,15 +101,23 @@ def make_track(boxes, tracks):
 
 def find_boxes_message(boxes):
     corners_message = []
+    illegal_area = []
+    bus_area = []
     for box in boxes:
         if box[0] == 2:
             corners_message.append([box[3], box[4]])
-    real_corners = []
+        if box[0] == 0:
+            illegal_area.append([box[3], box[4]])
+        if box[0] == 15:
+            bus_area.append([box[3], box[4]])
+        real_corners = []
+    print("corners_message")
+    print(corners_message)
     for corner_message in corners_message:
-        if corner_message[1][0] > 3200:
-            new_corner = [[corner_message[0][0] + 200, corner_message[0][1]], corner_message[1]]
-#             corner_message[0][0] = corner_message[0][0] - 50
-            real_corners.append(new_corner)
+        if corner_message[1][0] > 3000:
+            # new_corner = [[corner_message[0][0] + 200, corner_message[0][1]], corner_message[1]]
+            #             corner_message[0][0] = corner_message[0][0] - 50
+            # real_corners.append(new_corner)
             continue
         real_corners.append(corner_message)
-    return real_corners
+    return real_corners, illegal_area, bus_area

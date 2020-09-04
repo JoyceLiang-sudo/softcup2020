@@ -12,7 +12,7 @@ def judge_illegal_change_lanes(tracks, lane_lines, illegal_boxes_number, track_k
         judge_flag = False
         if len(track) < track_kinds + 1:
             continue
-        if track[0] != 13:
+        if track[0] != 19:
             continue
         if track[-1][1] > 1600:
             continue
@@ -46,7 +46,7 @@ def judge_person_illegal_through_road(tracks, zebra_crossing, img_width):
             continue
         if track[-1][0] > int(img_width * 2 / 3):
             continue
-        if track[0] != 7:
+        if track[0] != 10:
             continue
         if zebra_crossing is None:
             illegal_person.append(track[1])

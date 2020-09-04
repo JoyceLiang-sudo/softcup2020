@@ -18,7 +18,7 @@ def save_illegal_car(img, data, boxes):
     """
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     for box in boxes:
-        if box[0] != 13:
+        if box[0] != 19:
             continue
         for car in data.no_comity_pedestrian_cars_number:
             if box[5] == car:
@@ -48,6 +48,7 @@ def create_file(path):
     """
     folder = os.path.exists(path)
     if not folder:  # 判断是否存在文件夹如果不存在则创建为文件夹
+        print("create")
         os.makedirs(path)  # makedirs 创建文件时如果路径不存在会创建这个路径
 
 
@@ -57,6 +58,7 @@ def create_save_file():
     """
     folder = os.path.exists(conf.save_path)
     if folder:  # 判断是否存在文件夹如果不存在则创建为文件夹
+        print("delete")
         shutil.rmtree(conf.save_path)  # 如果存在则删除该文件夹
     create_file(conf.save_path)
     create_file(conf.save_path + conf.save_path1)

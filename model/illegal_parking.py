@@ -96,21 +96,22 @@ def judge_illegal_area(img, lanes, stop_line):
     """
     判断是否有违停区域
     """
-    rho = 1
-    theta = np.pi / 180
-    threshold = 15
-    min_line_length = 70
-    max_line_gap = 20
-    possible_area = get_possible_area(lanes)
-    points = get_roi_points(img, possible_area, stop_line)
-    roi_mat = get_roi_mat(img, points)
-    lines, line_img = hough_lines(roi_mat, rho, theta, threshold, min_line_length, max_line_gap)
-    flag = get_judge_result(lines)
-    real_area = [possible_area, stop_line]
+    # rho = 1
+    # theta = np.pi / 180
+    # threshold = 15
+    # min_line_length = 70
+    # max_line_gap = 20
+    # possible_area = get_possible_area(lanes)
+    # points = get_roi_points(img, possible_area, stop_line)
+    # roi_mat = get_roi_mat(img, points)
+    # lines, line_img = hough_lines(roi_mat, rho, theta, threshold, min_line_length, max_line_gap)
+    # flag = get_judge_result(lines)
+    # real_area = [possible_area, stop_line]
+
     return flag, real_area
 
 
-def find_illegal_area(img, lanes, stop_line):
+def find_illegal_area(img, lanes, stop_line, boxes):
     """
     找出违停区域(容量为2,下标为0的为左右两条线集合，下标为1的为停车线)
     """
@@ -133,7 +134,7 @@ def judge_car_parking(track):
             continue
 
 
-def find_illegal_area_cars(illegal_area, tracks, track_kinds):
+def find_illegal_area_cars(illegal_area, tracks, track_kinds, stop_lines):
     """
     找出在违停区域的车
     """
@@ -141,26 +142,47 @@ def find_illegal_area_cars(illegal_area, tracks, track_kinds):
         return []
     illegal_numbers = []
     for track in tracks:
-        if track[1] != 2:
+        if track[0] != 19:
             continue
         if len(track) < 4 + track_kinds:
             continue
-        if judge_point_line_position(track[-1], illegal_area[0][0]) != 1:
+        # if judge_point_line_position(track[-1], illegal_area[0][0]) != 1:
+        #     continue
+        # if judge_point_line_position(track[-1], illegal_area[0][1]) != -1:
+        #     continue
+        if track[-1][0] < illegal_area[0][0][0] or track[-1][0] > illegal_area[0][1][0]:
             continue
-        if judge_point_line_position(track[-1], illegal_area[0][1]) != -1:
+        if track[-1][1] < illegal_area[0][0][1] or track[-1][1] > illegal_area[0][1][1]:
             continue
-        if track[-1][1] <= illegal_area[1][0][1]:
-            continue
-        if calculate_average_deviation([track[-1], track[-2], track[-3], track[-4], track[-5]]) > 10:
-            continue
-        illegal_numbers.append(track[0])
+        # if track[-1][1] <= stop_lines:
+        #     continue
+        # if calculate_average_deviation([track[-1], track[-2], track[-3], track[-4], track[-5]]) > 10:
+        #     continue
+        illegal_numbers.append(track[1])
     return illegal_numbers
 
 
-def find_illegal_parking_cars(illegal_area, tracks, numbers, track_kinds):
+def find_illegal_parking_cars(illegal_area, tracks, numbers, track_kinds, stop_line):
     """
     找出在违停区域停车的车
     """
-    illegal_cars = find_illegal_area_cars(illegal_area, tracks, track_kinds)
+    illegal_cars = find_illegal_area_cars(illegal_area, tracks, track_kinds, stop_line)
     now_numbers = find_real_numbers(numbers, illegal_cars)
     return now_numbers
+
+
+def find_stop_in_bus_area(bus_area, tracks):
+    print("bus_area")
+    print(bus_area)
+    if len(bus_area) == 0:
+        return []
+    illegal_number = []
+    for track in tracks:
+        if track[0] != 19:
+            continue
+        if track[-1][0] < bus_area[0][0][0] or track[-1][0] > bus_area[0][1][0]:
+            continue
+        if track[-1][1] < bus_area[0][0][1] or track[-1][1] > bus_area[0][1][1]:
+            continue
+        illegal_number.append(track[1])
+    return illegal_number

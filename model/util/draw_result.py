@@ -81,6 +81,16 @@ def draw_result(image, boxes, data, track_kinds):
                 box_color = [230, 100, 100]
                 box_thick = 10
                 break
+        for car_stop in data.stop_in_bus_area:
+            if car_stop == box[5]:
+                box_color = [230, 100, 100]
+                box_thick = 10
+                break
+        for car_stop in data.illegal_parking_numbers:
+            if car_stop == box[5]:
+                box_color = [230, 100, 100]
+                box_thick = 10
+                break
 
         cv2.rectangle(image, box[3], box[4], box_color, box_thick)
         predicted_class = data.class_names[box[0]]
