@@ -28,16 +28,24 @@ def find_lines(lines):
         return []
     lane_lines = []
     stop_lines = []
+    real_lane_lines = []
     for line in lines:
         for x1, y1, x2, y2 in line:
             slope = (y2 - y1) / (x2 - x1)
             # if True:
-            if slope > 0.8 or slope < -1:
+            if slope > 1 or slope < -1.8:
+                print(slope)
                 line_one = [[x1, y1], [x2, y2]]
                 lane_lines.append(line_one)
             if -0.4 < slope < 0.4:
                 line_one = [[x1, y1], [x2, y2]]
                 stop_lines.append(line_one)
+    # for line in lane_lines:
+    #     if line[0][0] > 300:
+    #         # real_lane_lines.append([[line[0][0] - 50, line[0][1]], [line[1][0] - 50, line[1][1]]])
+    #         continue
+    #     # real_lane_lines.append([[line[0][0] - 50, line[0][1]], [line[1][0] - 50, line[1][1]]])
+    #     real_lane_lines.append(line)
     return lane_lines, stop_lines
 
 
@@ -62,6 +70,7 @@ def extend_stop_lines(stop_lines, img_width, img_height):
 
 
 def extend_lane_lines(img_width, img_height, zebra_crossing, lane_lines):
+
     if zebra_crossing[0][1] == 0:
         # reference_line = [[0, int(img.shape[0] / 5 * 3)], [img.shape[1], int(img.shape[0] / 5 * 3)]]
         reference_line = [[0, 100], [img_width, 100]]
@@ -79,7 +88,7 @@ def extend_lane_lines(img_width, img_height, zebra_crossing, lane_lines):
         # point = line[0]
         up_points.append(point)
         point = get_intersection_point(line_bottom, line)
-        # point = line[1]
+        #  point = line[1]
         if point[0] < 0:
             point = get_intersection_point(line_left, line)
         bottom_points.append(point)
@@ -116,7 +125,7 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap, zebra_cr
                             maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     lane_lines, stop_lines = find_lines(lines)
-    lane_lines = remove_short_lines(lane_lines)
+    # lane_lines = remove_short_lines(lane_lines)
     if zebra_crossing[0][1] == 0:
         lane_lines = [find_longest_line(lane_lines)]
     extend_stop_lines(stop_lines, img.shape[1], img.shape[0])
@@ -133,7 +142,9 @@ def deal_contours(img):
 
 
 def get_stop_line(stop_lines):
-    if not stop_lines:
+    # print("stop_lines")
+    # print(stop_lines)
+    if not stop_lines or stop_lines[0][1] == 0:
         return [[0, 0], [0, 0]]
     # if len(lane_lines) <= 0:
     #     left_line = [[0, 0], [0, img.shape[0]]]
@@ -153,19 +164,21 @@ def get_stop_line(stop_lines):
     return [[stop_lines[0][0][0], left_y], [stop_lines[0][1][0], right_y]]
 
 
-def deal_picture(img, zebra_crossing, zebra_width, corner_message):
+def deal_picture(img, zebra_crossing, corner_message):
+    print(len(corner_message))
+    img_test = img.copy()
     blur_k_size = 5
     canny_l_threshold = 80  # 80
     canny_h_threshold = 150
     rho = 1
     theta = np.pi / 180
     threshold = 20
-    min_line_length = 160
+    min_line_length = 100
     max_line_gap = 40
     x, y = img.shape[0:2]
     img = cv2.resize(img, (int(y / 2), int(x / 2)))
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    retval, gray_test = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
+    retval, gray_test = cv2.threshold(gray, 130, 255, cv2.THRESH_BINARY)
     gray = deal_contours(gray_test)
     blur_gray = cv2.GaussianBlur(gray, (blur_k_size, blur_k_size), 0, 0)
     edges = cv2.Canny(blur_gray, canny_l_threshold, canny_h_threshold)
@@ -178,6 +191,7 @@ def deal_picture(img, zebra_crossing, zebra_width, corner_message):
     lane_lines.sort()
     stop_line = get_stop_line(stop_lines)
     extend_lane_lines(img.shape[1], img.shape[0], stop_line, lane_lines)
+
     return lane_lines, stop_line
 
 
@@ -219,14 +233,11 @@ def get_lane_lines(img, zebra_line, corner_message):
     """
     find_src = img.copy()
     if zebra_line is None:
-        zebra_width = img.shape[1]
         zebra_line = [[0, 0], [0, 0], [0, 0], [0, 0]]
-    else:
-        zebra_width = zebra_line[3][1] - zebra_line[2][1]
-    point1 = [0, (zebra_line[3][1] + zebra_line[2][1]) / 4]
-    point2 = [img.shape[1], (zebra_line[3][1] + zebra_line[2][1]) / 4]
+    point1 = [0, (zebra_line[3][1] + zebra_line[2][1]) / 2]
+    point2 = [img.shape[1], (zebra_line[3][1] + zebra_line[2][1]) / 2]
     zebra_crossing = [point1, point2]
-    result_lines, stop_lines = deal_picture(img, zebra_crossing, zebra_width, corner_message)
+    result_lines, stop_lines = deal_picture(img, zebra_crossing, corner_message)
     result_lines = find_result_lane_lines(find_src, result_lines, zebra_line, corner_message)
     return result_lines, stop_lines
 
@@ -265,12 +276,14 @@ def make_lanes(img, lines_group):
     """
     lanes = []
     if len(lines_group) == 1:
-        lanes.append([[lines_group[0][-1]], [[img.shape[1], 0], [img.shape[1], img.shape[0]]]])
+        lanes.append([lines_group[-1], [[img.shape[1], 0], [img.shape[1], img.shape[0]]]])
         return lanes
+    print("lines_group")
+    print(lines_group)
     left_line = lines_group[0]
     flag = False
     for i in range(0, len(lines_group)):
-        if not flag:
+        if not flag and len(lines_group) > 1:
             flag = True
             continue
         right_line = lines_group[i]
@@ -287,6 +300,7 @@ def get_lanes(img, lane_lines, init_flag):
     """
     得到车道（每个元素包含左线，右线）
     """
+    print("in get_lanes")
     if len(lane_lines) > 0:
         lines_group = make_lines_group(lane_lines)
         if init_flag:
@@ -477,6 +491,7 @@ def protect_lanes(pre_lane_lines, now_lane_lines, pre_lanes, now_lanes):
 
 def union_lane_lines(lines_group):
     result_lines = []
+    real_lines = []
     for line_group in lines_group:
         if len(line_group) == 1:
             result_lines.append(line_group[0])
@@ -492,6 +507,13 @@ def union_lane_lines(lines_group):
                 now_line_group = line_group
             point1, point2 = union_one_group(now_line_group)
             result_lines.append([point1, point2])
+    # for line in result_lines:
+    #     if line[0][0] < 600:
+    #         new_line = [[line[0][0] - 50, line[0][1]], [line[1][0] - 50, line[1][1]]]
+    #         new_point = get_intersection_point(new_line, [[0, 0], [0, 1080]])
+    #         real_lines.append([new_line[0], new_point])
+    #         continue
+    #     real_lines.append(line)
     return result_lines
 
 

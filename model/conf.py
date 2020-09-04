@@ -17,14 +17,14 @@ conf.save_path4 = "retrograde_cars/"
 conf.save_path5 = "running_red/"
 
 # yolo配置文件
-conf.cfg_path = './data/SoftCup.cfg'
-conf.weight_path = './data/SoftCup.weights'
+conf.cfg_path = './data/yolov4-custom.cfg'
+conf.weight_path = './data/yolov4-custom_best.weights'
 conf.radar_data_path = './data/SoftCup.data'
 conf.names_path = './data/SoftCup.names'
 conf.hide_labels = []  # 不在最终结果上画出来的类别编号
 
 # 置信度，大于此值会被判断为真
-conf.thresh = 0.3
+conf.thresh = 0.5
 
 # 车牌识别的模型
 conf.plate_cascade = './data/plate_models/cascade.xml'

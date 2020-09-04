@@ -1,15 +1,15 @@
 from model.util.point_util import *
 
 
-def make_range_lines(img, lane_lines):
+def make_range_lines(img_width, img_height, lane_lines):
     """
     制作检测区域
     """
-    up_line = [[0, int(img.shape[0] / 4)], [img.shape[1], int(img.shape[0] / 4)]]
-    down_line = [[0, img.shape[0]], [img.shape[1], img.shape[0]]]
+    up_line = [[0, int(img_height / 4)], [img_width, int(img_height / 4)]]
+    down_line = [[0, img_height], [img_width, img_height]]
     point = get_intersection_point(lane_lines[0], up_line)
     left_line = [point, lane_lines[0][1]]
-    right_line = [[int(img.shape[1] / 8 * 7), 0], [int(img.shape[1] / 8 * 7), img.shape[0]]]
+    right_line = [[int(img_width / 8 * 7), 0], [int(img_width / 8 * 7), img_height]]
     range_lines = [up_line, down_line, left_line, right_line]
     return range_lines
 
@@ -44,14 +44,14 @@ def judge_run_direction(line_slope, track, lane_lines, track_kinds):
     return 0
 
 
-def get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds, stop_line):
+def get_retrograde_numbers(range_lines, tracks, line_slope, lane_lines, track_kinds, stop_line):
     retrograde_numbers = []
     for track in tracks:
-        if track[0] != 13:
+        if track[0] != 19:
             continue
         if len(track) < track_kinds:
             continue
-        if track[-1][1] > stop_line[0][1]:
+        if track[-1][1] > stop_line[0][1] != 0:
             continue
         if track[-1][1] < range_lines[0][0][1]:
             continue
@@ -81,7 +81,7 @@ def get_real_numbers(numbers, retrograde_numbers):
     return numbers
 
 
-def get_retrograde_cars(img, lane_lines, tracks, numbers, track_kinds, stop_line):
+def get_retrograde_cars(img_width, img_height, lane_lines, tracks, numbers, track_kinds, stop_line):
     """
     得到逆行车辆
     """
@@ -89,9 +89,9 @@ def get_retrograde_cars(img, lane_lines, tracks, numbers, track_kinds, stop_line
         return []
     if len(lane_lines) <= 0:
         return []
-    range_lines = make_range_lines(img, lane_lines)
+    range_lines = make_range_lines(img_width, img_height, lane_lines)
     line_slope = get_slope(lane_lines[0][0], lane_lines[0][1])
-    retrograde_numbers = get_retrograde_numbers(img, range_lines, tracks, line_slope, lane_lines, track_kinds,
+    retrograde_numbers = get_retrograde_numbers(range_lines, tracks, line_slope, lane_lines, track_kinds,
                                                 stop_line)
     real_numbers = get_real_numbers(numbers, retrograde_numbers)
     return real_numbers

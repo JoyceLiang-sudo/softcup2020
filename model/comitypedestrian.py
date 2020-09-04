@@ -17,16 +17,16 @@ def get_predict_people_lines(img, tracks, track_kinds):
     for track in tracks:
         if len(track) < 4 + track_kinds:
             continue
-        if track[-1][1] < range_y_min:
-            continue
+        # if track[-1][1] < range_y_min:
+        #     continue
         if calculate_distance(track[track_kinds - 1], track[-1]) < 50:
             continue
-        if track[0] == 13:
+        if track[0] == 19:
             if track[3][2] == 3:
                 right_flag = True
             car_tracks.append(track)
             continue
-        if track[0] == 7 or track[0] == 2:
+        if track[0] == 10:
             people_tracks.append(track)
             predict_people_line = get_predict_people_line(img, track, track_kinds)
             predict_people_lines.append(predict_people_line)
