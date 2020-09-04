@@ -1,4 +1,5 @@
 import time
+from queue import Queue
 
 from PySide2 import QtGui
 
@@ -8,7 +9,7 @@ from PySide2.QtCore import Signal, QThread
 from PySide2.QtWidgets import QApplication, QFileDialog
 
 from model import lane_line
-from model.darknet.process import get_names, get_colors
+from model.darknet.process import get_names, get_colors, DarknetThread
 from model.deep_sort.process import init_deep_sort, tracker_update, make_track, find_boxes_message
 from model.lane_line import draw_lane_lines, draw_stop_line, make_tracks_lane, make_adjoin_matching, protect_lanes, \
     protect_stop_lines
@@ -72,6 +73,9 @@ class MainWindow(Ui_Form):
         img = cv2.resize(img, (1640, 950), interpolation=cv2.INTER_LINEAR)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         self.set_image(img)
+        # 开始检测线程
+        self.backend.start()
+        print('Start main loop!')
 
     def info(self, msg):
         self.show_message.append(msg)
@@ -85,13 +89,10 @@ class MainWindow(Ui_Form):
 
     def read_video_from_file(self):
         video_path, video_type = QFileDialog.getOpenFileName(self, '打开视频', "~", "Video Files(*.mp4 *.avi)")
-        self.backend.set_video_path(video_path)
-        self.backend.init_flag = True
         self.info("读入视频成功！视频路径：" + video_path)
         self.info("加载中...")
-        # 开始检测线程
-        self.backend.start()
-        print('Start main loop!')
+        self.backend.set_video_path(video_path)
+        self.backend.init_flag = True
 
 
 class MainThread(QThread):
@@ -106,18 +107,12 @@ class MainThread(QThread):
         self.comity_pedestrian = ComityPedestrian()
         self.traffic_flow = TrafficFlow()
         self.time_difference = TimeDifference()
-        self.cap = None
         self.init_flag = True
-        # darknet
-        print('Loading yolo corner...')
-        self.netMain = darknet.load_net_custom(conf.cfg_path.encode("ascii"), conf.weight_path.encode("ascii"), 0, 1)
-        self.metaMain = darknet.load_meta(conf.radar_data_path.encode("ascii"))
-        self.darknet_image_width = darknet.network_width(self.netMain)
-        self.darknet_image_height = darknet.network_height(self.netMain)
-        self.darknet_image = darknet.make_image(self.darknet_image_width, self.darknet_image_height, 3)
 
-        print('Yolo image size: [' + str(self.darknet_image_width) + ',' + str(self.darknet_image_height) + ']')
-        print('Load yolo corner success!')
+        # darknet线程
+        self.image_queue = Queue(maxsize=100)
+        self.darknet_thread = DarknetThread("darknet", self.image_queue)
+        self.darknet_thread.start()
 
         # 车牌识别进程
         print('Loading license plate corner...')
@@ -126,11 +121,6 @@ class MainThread(QThread):
         license_plate_process.start()
         self.plate_pipe = plate_parent_pipe
         print('Load license plate corner success!')
-
-        # 追踪器
-        print('Loading deep sort...')
-        self.encoder, self.tracker = init_deep_sort()
-        print('Load deep sort success!')
 
     def info(self, msg):
         self.message_info.emit(str(msg))
@@ -217,42 +207,27 @@ class MainThread(QThread):
                     box[6] = str(res[0][0])
 
     def set_video_path(self, video_path):
-        self.cap = cv2.VideoCapture(video_path)
+        self.darknet_thread.re_init(video_path)
 
     def run(self):
         create_save_file()
         while True:
             prev_time = time.time()
-            ret, frame_read = self.cap.read()
             if self.init_flag:
                 self.data = Data()
                 self.comity_pedestrian = ComityPedestrian()
                 self.traffic_flow = TrafficFlow()
                 self.time_difference = TimeDifference()
-                self.encoder, self.tracker = init_deep_sort()
                 self.init_flag = False
 
-            if frame_read is None:
+            res = self.image_queue.get()
+            frame_read = res[0]
+            boxes = res[1]
+            flag = res[2]
+            if not flag:
                 self.warn("加载视频失败！")
                 time.sleep(1)
                 continue
-
-            frame_resized = cv2.resize(frame_read, (self.darknet_image_width, self.darknet_image_height),
-                                       interpolation=cv2.INTER_LINEAR)
-            # 检测图片
-            darknet.copy_image_from_bytes(self.darknet_image, frame_resized.tobytes())
-
-            # 类别编号  置信度 (x,y,w,h)
-            detections = darknet.detect_image(self.netMain, self.metaMain, self.darknet_image, thresh=conf.thresh)
-
-            # 类别编号, 置信度, 中点坐标, 左上坐标, 右下坐标, 追踪编号(-1为未确定), 类别数据(obj)
-            boxes = convert_output(detections)
-
-            # 更新tracker
-            boxes = tracker_update(boxes, frame_resized, self.encoder, self.tracker, conf.trackerConf.track_label)
-
-            # 把识别框映射为输入图片大小
-            cast_origin(boxes, self.darknet_image_width, self.darknet_image_height, frame_read.shape)
 
             # 提取boxes信息
             corners_message = find_boxes_message(boxes)
@@ -358,7 +333,7 @@ class MainThread(QThread):
             # draw_speed_info(frame_read, self.data.speeds, boxes)
 
             # 打印预测信息
-            # print_info(boxes, time.time() - prev_time)
+            print_info(boxes, time.time() - prev_time)
 
             time_flag = False
             if time.time() - self.time_difference.pre_time > 3:
