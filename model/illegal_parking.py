@@ -146,18 +146,10 @@ def find_illegal_area_cars(illegal_area, tracks, track_kinds, stop_lines):
             continue
         if len(track) < 4 + track_kinds:
             continue
-        # if judge_point_line_position(track[-1], illegal_area[0][0]) != 1:
-        #     continue
-        # if judge_point_line_position(track[-1], illegal_area[0][1]) != -1:
-        #     continue
         if track[-1][0] < illegal_area[0][0][0] or track[-1][0] > illegal_area[0][1][0]:
             continue
         if track[-1][1] < illegal_area[0][0][1] or track[-1][1] > illegal_area[0][1][1]:
             continue
-        # if track[-1][1] <= stop_lines:
-        #     continue
-        # if calculate_average_deviation([track[-1], track[-2], track[-3], track[-4], track[-5]]) > 10:
-        #     continue
         illegal_numbers.append(track[1])
     return illegal_numbers
 

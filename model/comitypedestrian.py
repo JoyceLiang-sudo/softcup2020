@@ -8,11 +8,10 @@ class ComityPedestrian(object):
 
 
 # 解出行人前沿轨迹
-def get_predict_people_lines(img, tracks, track_kinds):
+def get_predict_people_lines(img_width, img_height, tracks, track_kinds):
     predict_people_lines = []
     car_tracks = []
     people_tracks = []
-    range_y_min = int(img.shape[0] / 4)
     right_flag = False
     for track in tracks:
         if len(track) < 4 + track_kinds:
@@ -28,19 +27,19 @@ def get_predict_people_lines(img, tracks, track_kinds):
             continue
         if track[0] == 10:
             people_tracks.append(track)
-            predict_people_line = get_predict_people_line(img, track, track_kinds)
+            predict_people_line = get_predict_people_line(img_width, img_height, track, track_kinds)
             predict_people_lines.append(predict_people_line)
     return predict_people_lines, car_tracks, people_tracks, right_flag
 
 
 # 解出单个行人前沿轨迹
-def get_predict_people_line(img, track, track_kinds):
+def get_predict_people_line(img_width, img_height, track, track_kinds):
     if len(track) < track_kinds:
         predict_people_line = [[0, 0], [0, 0]]
         return predict_people_line
     long_line = [[track[-1][0], track[-1][1]], [track[track_kinds - 1][0], track[track_kinds - 1][1]]]
     slope = get_slope(track[-1], track[track_kinds - 1])
-    possible_points = get_possible_points(img, slope, long_line)
+    possible_points = get_possible_points(img_width, img_height, slope, long_line)
     real_point = get_another_point(track, possible_points, track_kinds)
     predict_people_line = [track[1], track[-1], real_point]
     return predict_people_line
@@ -60,8 +59,8 @@ def get_another_point(track, possible_points, track_kinds):
 
 
 # 解出行人轨迹直线的可能图像边界点
-def get_possible_points(img, slope, long_line):
-    line1, line2 = get_another_lines(img, slope, long_line)
+def get_possible_points(img_width, img_height, slope, long_line):
+    line1, line2 = get_another_lines(img_width, img_height, slope, long_line)
     point1 = get_intersection_point(long_line, line1)
     point2 = get_intersection_point(long_line, line2)
     possible_points = [point1, point2]
@@ -69,30 +68,28 @@ def get_possible_points(img, slope, long_line):
 
 
 # 解出对应的图像边界线
-def get_another_lines(img, slope, long_line):
-    width = img.shape[1]
-    height = img.shape[0]
-    left_line = [[0, 0], [1, height]]
-    right_line = [[width - 1, 0], [width, height]]
-    up_line = [[0, 0], [width, 0]]
-    down_line = [[0, height], [width, height]]
+def get_another_lines(img_width, img_height, slope, long_line):
+    left_line = [[0, 0], [1, img_height]]
+    right_line = [[img_width - 1, 0], [img_width, img_height]]
+    up_line = [[0, 0], [img_width, 0]]
+    down_line = [[0, img_height], [img_width, img_height]]
     if slope == 0:
         return [left_line, right_line]
     point_left = get_intersection_point(long_line, left_line)
     point_right = get_intersection_point(long_line, right_line)
     point_up = get_intersection_point(long_line, up_line)
     point_down = get_intersection_point(long_line, down_line)
-    if 0 < point_left[1] < height:
-        if 0 < point_up[0] < width:
+    if 0 < point_left[1] < img_height:
+        if 0 < point_up[0] < img_width:
             return left_line, up_line
-        if 0 < point_right[1] < height:
+        if 0 < point_right[1] < img_height:
             return left_line, right_line
-        if 0 < point_down[0] < width:
+        if 0 < point_down[0] < img_width:
             return left_line, down_line
-    elif 0 < point_up[0] < width:
-        if 0 < point_right[1] < height:
+    elif 0 < point_up[0] < img_width:
+        if 0 < point_right[1] < img_height:
             return up_line, right_line
-        if 0 < point_down[0] < width:
+        if 0 < point_down[0] < img_width:
             return up_line, down_line
     return right_line, down_line
 
@@ -168,11 +165,11 @@ def find_being_tracks(tracks, boxes):
     return real_tracks
 
 
-def judge_comity_pedestrian(img, tracks, comity_pedestrian, numbers, boxes, track_kinds):
+def judge_comity_pedestrian(img_width, img_height, tracks, comity_pedestrian, numbers, boxes, track_kinds):
     # 找当前帧存在的轨迹
     real_tracks = find_being_tracks(tracks, boxes)
     # 解出行人前沿轨迹
-    predict_people_lines, car_tracks, people_tracks, right_flag = get_predict_people_lines(img, real_tracks,
+    predict_people_lines, car_tracks, people_tracks, right_flag = get_predict_people_lines(img_width, img_height, real_tracks,
                                                                                            track_kinds)
     # 当车压过人的前沿轨迹时，找到对应车和人
     find_car_pass(predict_people_lines, car_tracks, comity_pedestrian, track_kinds)

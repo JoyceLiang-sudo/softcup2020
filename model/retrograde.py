@@ -51,8 +51,8 @@ def get_retrograde_numbers(range_lines, tracks, line_slope, lane_lines, track_ki
             continue
         if len(track) < track_kinds:
             continue
-        if track[-1][1] > stop_line[0][1] != 0:
-            continue
+        # if track[-1][1] > stop_line[0][1]:
+        #     continue
         if track[-1][1] < range_lines[0][0][1]:
             continue
         if track[-1][0] > range_lines[3][0][0]:

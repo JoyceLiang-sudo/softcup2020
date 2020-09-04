@@ -47,9 +47,9 @@ def judge_time_up(time, traffic_flow_class):
     return False
 
 
-def get_traffic_flow(img, traffic_flow_class, tracks, time, track_kinds):
+def get_traffic_flow(img_width, img_height, traffic_flow_class, tracks, time, track_kinds):
     # 预置参考线
-    reference_line = [[0, int(img.shape[0] / 2)], [img.shape[1], int(img.shape[0] / 2)]]
+    reference_line = [[0, int(img_height / 2)], [img_width, int(img_height / 2)]]
     # 判断是否到时间周期
     time_up_flag = judge_time_up(time, traffic_flow_class)
     # 计算当前帧的通过个数

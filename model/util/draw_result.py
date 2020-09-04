@@ -4,6 +4,7 @@
 """
 import cv2
 from model.conf import conf
+from model.util.point_util import *
 
 
 def print_info(boxes, time):
@@ -49,9 +50,10 @@ def draw_result(image, boxes, data, track_kinds):
     """
     if data.tracks is None:
         return None
-    
     for box in boxes:
         if box[0] in conf.hide_labels:
+            continue
+        if calculate_distance(box[2], [1250, 980]) < 20:
             continue
         box_color = data.colors[box[0]]
         box_thick = 3
@@ -89,6 +91,16 @@ def draw_result(image, boxes, data, track_kinds):
         for car_stop in data.illegal_parking_numbers:
             if car_stop == box[5]:
                 box_color = [230, 100, 100]
+                box_thick = 10
+                break
+        for car_run in data.no_comity_straight_number:
+            if car_run == box[5]:
+                box_color = [230, 100, 100]
+                box_thick = 10
+                break
+        for car_run in data.illegal_person_number:
+            if car_run == box[5]:
+                box_color = [130, 100, 100]
                 box_thick = 10
                 break
 
